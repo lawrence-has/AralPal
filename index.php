@@ -149,8 +149,8 @@ $lessons = [
 
                 <article class="feature-card">
                     <div class="feature-icon">✍️</div>
-                    <h3>Practice with Quizzes</h3>
-                    <p>Test your knowledge after reviewing each topic.</p>
+                    <h3>Quizzes</h3>
+                    <p>Answer questions and check what you have learned.</p>
                 </article>
 
                 <article class="feature-card">
