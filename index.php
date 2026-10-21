@@ -51,11 +51,14 @@ $pageTitle = "AralPal - Learn at Your Own Pace";
                     <p>Read learning materials and study at your own pace.</p>
                 </article>
 
-                <article class="feature-card">
-                    <div class="feature-icon">✍️</div>
-                    <h3>Quizzes</h3>
-                    <p>Answer questions and check what you have learned.</p>
-                </article>
+               <article class="feature-card">
+    <div class="feature-icon">✍️</div>
+    <h3>Quizzes</h3>
+    <p>Answer questions and check what you have learned.</p>
+    <a class="primary-btn" href="pages/quizzes.php">
+        Take a Quiz
+    </a>
+</article>
 
                 <article class="feature-card">
                     <div class="feature-icon">📈</div>
