@@ -1,0 +1,37 @@
+
+# Environment and secret configuration
+.env
+.env.*
+!.env.example
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Logs
+*.log
+logs/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE settings
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Local database exports and backups
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite3
+
+# Laragon local-only files
+laragon-local/
