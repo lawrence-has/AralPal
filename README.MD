@@ -2,8 +2,8 @@
 # AralPal - Student Learning Website
 
 ## Student Information
-- **Student Name:** [Your Full Name]
-- **Course and Section:** BSIT - [Your Section]
+- Student Name: Franz Lawrence M Castillo
+- Course and Section: BSIT - 3F3
 
 ## Project Description
 AralPal is a student learning website designed to help students
