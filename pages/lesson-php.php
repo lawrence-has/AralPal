@@ -1,8 +1,19 @@
 <?php
-$pageTitle = "Introduction to PHP – AralPal";
+$pageTitle  = "Introduction to PHP – AralPal";
+$lessonSlug = 'php';
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
-$_page_title = $pageTitle;
+
+// Track visit: upsert in_progress (only when logged in)
+if (is_logged_in()) {
+    $userId = (int) current_user()['id'];
+    get_db()->prepare("
+        INSERT INTO lesson_progress (user_id, lesson_slug, status, visited_at)
+        VALUES (?, ?, 'in_progress', NOW())
+        ON DUPLICATE KEY UPDATE visited_at = NOW()
+    ")->execute([$userId, $lessonSlug]);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,6 +23,7 @@ $_page_title = $pageTitle;
 <title><?= htmlspecialchars($pageTitle) ?></title>
 <link rel="icon" type="image/png" href="../assets/aralpal-logo.png">
 <link rel="stylesheet" href="../assets/Style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script>(function(){var s=localStorage.getItem('ap-theme'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',(s?s==='dark':d)?'dark':'light')})();</script>
 </head>
 <body>
@@ -26,7 +38,7 @@ $_page_title = $pageTitle;
         <a href="../index.php#lessons">All Lessons</a>
         <a href="quizzes.php">Quizzes</a>
         <a href="progress.php">My Progress</a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
     </nav>
 </header>
 
@@ -47,15 +59,15 @@ $_page_title = $pageTitle;
         <article class="lesson-content">
 
             <header class="lesson-header">
-                <p class="lesson-category">💻 Programming</p>
+                <p class="lesson-category"><i class="fas fa-laptop-code"></i> Programming</p>
                 <h1>Introduction to PHP</h1>
                 <p class="lesson-intro">Learn how PHP powers the web — from simple output to handling forms and talking to databases. By the end of this lesson you'll understand what PHP does and how to write your first dynamic page.</p>
 
                 <div class="lesson-meta">
-                    <span>🎓 Beginner</span>
-                    <span>⏱ 15 minutes</span>
-                    <span>✅ Free</span>
-                    <span>📖 5 topics</span>
+                    <span><i class="fas fa-graduation-cap"></i> Beginner</span>
+                    <span><i class="fas fa-clock"></i> 15 minutes</span>
+                    <span><i class="fas fa-circle-check"></i> Free</span>
+                    <span><i class="fas fa-book-open"></i> 5 topics</span>
                 </div>
             </header>
 
@@ -77,7 +89,7 @@ $_page_title = $pageTitle;
                 <p>PHP (PHP: Hypertext Preprocessor) is a server-side scripting language designed for web development. It runs on the web server — not in the browser — and generates HTML that is sent to the client.</p>
                 <p>PHP is used by major platforms like WordPress, Facebook (in its early days), and Wikipedia. It powers over 75% of all websites that use a server-side language.</p>
                 <div class="lesson-callout lesson-callout--info">
-                    <span>💡</span>
+                    <span><i class="fas fa-lightbulb"></i></span>
                     <p><strong>Key point:</strong> PHP code is processed on the <em>server</em>. The user only ever sees the resulting HTML — never your PHP source code.</p>
                 </div>
             </section>
@@ -87,13 +99,13 @@ $_page_title = $pageTitle;
                 <h2>2. How PHP works</h2>
                 <p>When a browser requests a <code>.php</code> file, the server runs the PHP interpreter, executes the code, and returns plain HTML to the browser.</p>
                 <div class="lesson-flow">
-                    <div class="lesson-flow__step">🌐 Browser sends request</div>
+                    <div class="lesson-flow__step"><i class="fas fa-globe"></i> Browser sends request</div>
                     <div class="lesson-flow__arrow">→</div>
-                    <div class="lesson-flow__step">🖥 Server runs PHP</div>
+                    <div class="lesson-flow__step"><i class="fas fa-server"></i> Server runs PHP</div>
                     <div class="lesson-flow__arrow">→</div>
-                    <div class="lesson-flow__step">📄 HTML sent back</div>
+                    <div class="lesson-flow__step"><i class="fas fa-file-code"></i> HTML sent back</div>
                     <div class="lesson-flow__arrow">→</div>
-                    <div class="lesson-flow__step">🖥 Browser renders page</div>
+                    <div class="lesson-flow__step"><i class="fas fa-display"></i> Browser renders page</div>
                 </div>
                 <p>PHP files start with <code>&lt;?php</code> and end with <code>?&gt;</code>. You can mix PHP and HTML freely in the same file.</p>
             </section>
@@ -113,7 +125,7 @@ print "Learning PHP is fun.";
 ?&gt;</pre>
                 </div>
                 <div class="lesson-callout lesson-callout--tip">
-                    <span>✅</span>
+                    <span><i class="fas fa-circle-check"></i></span>
                     <p><strong>Tip:</strong> Use double quotes <code>"..."</code> when you need to embed variables. Use single quotes <code>'...'</code> for plain strings — they're slightly faster.</p>
                 </div>
             </section>
@@ -190,7 +202,7 @@ echo greet("Maria");  // Hello, Maria!
 echo greet("Juan");   // Hello, Juan!</pre>
                 </div>
                 <div class="lesson-callout lesson-callout--success">
-                    <span>🎉</span>
+                    <span><i class="fas fa-party-horn"></i></span>
                     <p><strong>You've covered the basics!</strong> PHP variables, output, control flow, and functions are the foundation of everything else you'll build.</p>
                 </div>
             </section>
@@ -198,15 +210,27 @@ echo greet("Juan");   // Hello, Juan!</pre>
             <!-- Lesson navigation -->
             <div class="lesson-nav">
                 <div></div>
-                <a class="primary-btn" href="lesson-html-css.php">Next: HTML & CSS Basics →</a>
+                <a class="primary-btn" href="lesson-html-css.php">Next: HTML &amp; CSS Basics →</a>
             </div>
+
+            <!-- Mark as Complete -->
+            <?php if (is_logged_in()): ?>
+            <div class="lesson-complete-wrap" style="margin-top:32px;text-align:center" id="completeWrap">
+                <button class="primary-btn" id="markCompleteBtn" onclick="markLessonComplete()">
+                    <i class="fas fa-circle-check" style="margin-right:.4rem"></i>Mark as Complete
+                </button>
+                <p id="completeMsg" style="display:none;margin-top:12px;color:var(--color-success,#22a06b);font-weight:600">
+                    <i class="fas fa-circle-check"></i> Lesson marked as complete!
+                </p>
+            </div>
+            <?php endif; ?>
 
         </article>
 
         <!-- ── Sidebar ── -->
         <aside class="lesson-sidebar">
             <div class="lesson-sidebar__card">
-                <h3>🎯 What you'll learn</h3>
+                <h3><i class="fas fa-bullseye" style="margin-right:.4rem"></i>What you'll learn</h3>
                 <ul>
                     <li>What PHP is and how it works</li>
                     <li>How to output text to the browser</li>
@@ -216,17 +240,17 @@ echo greet("Juan");   // Hello, Juan!</pre>
                 </ul>
             </div>
             <div class="lesson-sidebar__card">
-                <h3>📚 Related Lessons</h3>
-                <a class="sidebar-lesson-link" href="lesson-html-css.php">🎨 HTML & CSS Basics</a>
-                <a class="sidebar-lesson-link" href="lesson-javascript.php">⚡ JavaScript Fundamentals</a>
+                <h3><i class="fas fa-book" style="margin-right:.4rem"></i>Related Lessons</h3>
+                <a class="sidebar-lesson-link" href="lesson-html-css.php"><i class="fa-brands fa-html5" style="margin-right:.4rem"></i>HTML &amp; CSS Basics</a>
+                <a class="sidebar-lesson-link" href="lesson-javascript.php"><i class="fa-brands fa-js" style="margin-right:.4rem"></i>JavaScript Fundamentals</a>
             </div>
             <div class="lesson-sidebar__card">
-                <h3>✍️ Test Yourself</h3>
+                <h3><i class="fas fa-pen-to-square" style="margin-right:.4rem"></i>Test Yourself</h3>
                 <p>Ready to check what you've learned?</p>
                 <a class="primary-btn" href="quizzes.php" style="margin-top:12px">Take the Quiz</a>
             </div>
             <div class="lesson-sidebar__card">
-                <h3>👨‍🏫 Need Help?</h3>
+                <h3><i class="fas fa-chalkboard-user" style="margin-right:.4rem"></i>Need Help?</h3>
                 <p>Book a one-on-one session with an expert tutor.</p>
                 <a class="outline-btn" href="../tutors/index.php" style="margin-top:12px">Find a Tutor</a>
             </div>
@@ -244,7 +268,7 @@ echo greet("Juan");   // Hello, Juan!</pre>
 const tt = document.getElementById('themeToggle');
 function applyTheme(dark) {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    if (tt) { tt.textContent = dark ? '☀️' : '🌙'; }
+    if (tt) { tt.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; }
     localStorage.setItem('ap-theme', dark ? 'dark' : 'light');
 }
 applyTheme(document.documentElement.getAttribute('data-theme') === 'dark');
@@ -266,6 +290,31 @@ document.querySelectorAll('.code-copy-btn').forEach(btn => {
         }
     });
 });
+
+/* Mark as Complete */
+function markLessonComplete() {
+    const btn = document.getElementById('markCompleteBtn');
+    if (btn) btn.disabled = true;
+    fetch('/AralPal/pages/mark-progress.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': '<?= htmlspecialchars(generate_csrf()) ?>'
+        },
+        body: JSON.stringify({ lesson_slug: 'php', status: 'completed' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const msg = document.getElementById('completeMsg');
+            if (msg) msg.style.display = 'block';
+            if (btn) btn.style.display = 'none';
+        } else {
+            if (btn) btn.disabled = false;
+        }
+    })
+    .catch(() => { if (btn) btn.disabled = false; });
+}
 </script>
 </body>
 </html>
