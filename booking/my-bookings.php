@@ -237,7 +237,7 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- ── Flash messages ────────────────────────────────────────────── -->
     <?php if ($flash_confirmed): ?>
         <div class="alert alert-success" role="alert">
-            ✅ Your booking has been confirmed. Emails have been sent to you and the tutor.
+            <i class="fas fa-check-circle" aria-hidden="true"></i> Your booking has been confirmed. Emails have been sent to you and the tutor.
         </div>
     <?php endif; ?>
     <?php if ($flash_cancelled): ?>
@@ -371,7 +371,7 @@ function render_booking_row(array $bk, array $status_labels, bool $is_tutor, str
 
     $html .= '  <div class="booking-card__details">';
     $html .= '    <p class="booking-card__subject">' . e($bk['subject_name']) . '</p>';
-    $html .= '    <p class="booking-card__datetime">📅 ' . $date . ' &nbsp; 🕐 ' . $time . '</p>';
+    $html .= '    <p class="booking-card__datetime"><i class="fas fa-calendar-alt" aria-hidden="true"></i> ' . $date . ' &nbsp; <i class="fas fa-clock" aria-hidden="true"></i> ' . $time . '</p>';
     $html .= '  </div>';
 
     $html .= '  <div class="booking-card__meta">';

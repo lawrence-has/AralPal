@@ -111,11 +111,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ');
         $ins->execute([$booking_id, $user_id, $tutor_id, $rating, $comment]);
 
-        // 5. Recalculate tutor rating_average
+        // 5. Recalculate tutor rating_average (COALESCE handles zero-review edge case)
         $avg_stmt = $db->prepare('
             UPDATE tutors
-            SET rating_average = (
-                SELECT AVG(rating) FROM reviews WHERE tutor_id = ?
+            SET rating_average = COALESCE(
+                (SELECT AVG(rating) FROM reviews WHERE tutor_id = ?),
+                0.00
             )
             WHERE id = ?
         ');
@@ -203,7 +204,7 @@ require_once __DIR__ . '/../includes/header.php';
                             data-value="<?= $i ?>"
                             aria-label="<?= $i ?> star<?= $i > 1 ? 's' : '' ?>"
                             aria-pressed="false"
-                        >☆</button>
+                        ><i class="far fa-star"></i></button>
                     <?php endfor; ?>
                 </div>
                 <p class="star-label-text" id="star-label-text" aria-live="polite"></p>
@@ -287,10 +288,11 @@ require_once __DIR__ . '/../includes/header.php';
             if (parseInt(b.dataset.value, 10) <= val) {
                 b.classList.add(cls);
             }
-        });
-        // Update star characters
-        stars.forEach(function (b) {
-            b.textContent = b.classList.contains('selected') || b.classList.contains('hovered') ? '★' : '☆';
+            // Toggle Font Awesome solid vs. regular star
+            var filled = b.classList.contains('selected') || b.classList.contains('hovered');
+            b.innerHTML = filled
+                ? '<i class="fas fa-star" aria-hidden="true"></i>'
+                : '<i class="far fa-star" aria-hidden="true"></i>';
         });
     }
 })();

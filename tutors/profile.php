@@ -127,13 +127,17 @@ require_once __DIR__ . '/../includes/header.php';
 
             <span class="role-badge">Tutor</span>
             <?php if ($tutor['is_featured']): ?>
-                <span class="tutor-badge tutor-badge--featured">⭐ Featured</span>
+                <span class="tutor-badge tutor-badge--featured"><i class="fas fa-star" aria-hidden="true"></i> Featured</span>
             <?php endif; ?>
 
             <div class="profile-hero__rating">
                 <?php for ($i = 1; $i <= 5; $i++): ?>
                     <span class="<?= $i <= $avg ? 'star-filled' : 'star-empty' ?>" aria-hidden="true">
-                        <?= $i <= $avg ? '★' : '☆' ?>
+                        <?php if ($i <= $avg): ?>
+                            <i class="fas fa-star"></i>
+                        <?php else: ?>
+                            <i class="far fa-star"></i>
+                        <?php endif; ?>
                     </span>
                 <?php endfor; ?>
                 <span class="rating-value">
@@ -153,7 +157,7 @@ require_once __DIR__ . '/../includes/header.php';
                     class="btn btn-primary"
                     href="/AralPal/booking/book.php?tutor_id=<?= (int) $tutor['tutor_id'] ?>"
                 >
-                    📅 Book a Session
+                    <i class="fas fa-calendar-alt" aria-hidden="true"></i> Book a Session
                 </a>
             <?php endif; ?>
 
@@ -216,7 +220,11 @@ require_once __DIR__ . '/../includes/header.php';
                                         <div class="review-card__stars">
                                             <?php for ($i = 1; $i <= 5; $i++): ?>
                                                 <span class="<?= $i <= $rev_avg ? 'star-filled' : 'star-empty' ?>" aria-hidden="true">
-                                                    <?= $i <= $rev_avg ? '★' : '☆' ?>
+                                                    <?php if ($i <= $rev_avg): ?>
+                                                        <i class="fas fa-star"></i>
+                                                    <?php else: ?>
+                                                        <i class="far fa-star"></i>
+                                                    <?php endif; ?>
                                                 </span>
                                             <?php endfor; ?>
                                         </div>
@@ -251,7 +259,7 @@ require_once __DIR__ . '/../includes/header.php';
                         class="btn btn-primary btn--block"
                         href="/AralPal/booking/book.php?tutor_id=<?= (int) $tutor['tutor_id'] ?>"
                     >
-                        📅 Book Now
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i> Book Now
                     </a>
                 <?php endif; ?>
             </div>
