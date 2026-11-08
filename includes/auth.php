@@ -76,7 +76,14 @@ function login_user(array $user): void
  */
 function logout_user(): void
 {
+    $_SESSION = [];
     session_destroy();
+    setcookie(session_name(), '', [
+        'expires'  => time() - 3600,
+        'path'     => '/AralPal',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     header('Location: /AralPal/index.php');
     exit;
 }

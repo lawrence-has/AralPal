@@ -31,8 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password         = (string)($_POST['password']         ?? '');
     $password_confirm = (string)($_POST['password_confirm'] ?? '');
     $role             = (string)($_POST['role']             ?? '');
+    $hourly_rate      = filter_input(INPUT_POST, 'hourly_rate', FILTER_VALIDATE_FLOAT) ?: 0.00;
 
-    $old = compact('full_name', 'email', 'role');
+    $old = ['full_name' => $full_name, 'email' => $email, 'role' => $role, 'hourly_rate' => $hourly_rate];
+
+    if ($role === 'Tutor' && $hourly_rate < 0) $errors[] = 'Hourly rate must be a positive number.';
 
     if ($full_name === '')                              $errors[] = 'Full name is required.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))     $errors[] = 'A valid email address is required.';
@@ -64,13 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($role === 'Tutor') {
                 $stmt = get_db()->prepare('INSERT INTO tutors (user_id, bio, hourly_rate) VALUES (?, ?, ?)');
-                $stmt->execute([$user_id, '', 0]);
+                $stmt->execute([$user_id, '', $hourly_rate]);
             }
 
             send_mail(
                 $email,
-                'Welcome to AralPal',
-                '<h2>Welcome, ' . htmlspecialchars($full_name, ENT_QUOTES, 'UTF-8') . '!</h2><p>Your account has been created. Start learning today!</p>'
+                'Welcome to AralPal!',
+                '<h2>Welcome, ' . htmlspecialchars($full_name, ENT_QUOTES, 'UTF-8') . '!</h2>'
+                . '<p>Your account has been created. You can now sign in and start learning today!</p>'
+                . '<p><a href="http://localhost/AralPal/auth/login.php">Sign in to AralPal</a></p>'
             );
 
             header('Location: /AralPal/auth/login.php?registered=1');
@@ -87,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Register – AralPal</title>
     <link rel="icon" type="image/png" href="/AralPal/assets/aralpal-logo.png">
     <link rel="stylesheet" href="/AralPal/assets/Style.css?v=20261104-realfix">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script>(function(){var s=localStorage.getItem('ap-theme'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',(s?s==='dark':d)?'dark':'light')})();</script>
 </head>
 <body class="auth-body">
@@ -109,19 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="auth-split__features">
             <div class="auth-feature">
-                <span class="auth-feature__icon">🚀</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-rocket" aria-hidden="true"></i></span>
                 <span>Get started in seconds</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">🎓</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i></span>
                 <span>Student or Tutor account</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">🔒</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-lock" aria-hidden="true"></i></span>
                 <span>Secure &amp; private</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">💸</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-heart" aria-hidden="true"></i></span>
                 <span>Free forever for learners</span>
             </div>
         </div>
@@ -132,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="auth-form-card">
 
             <div class="auth-form-card__header">
-                <div class="auth-form-card__icon">📝</div>
+                <div class="auth-form-card__icon"><i class="fa-solid fa-user-pen" aria-hidden="true"></i></div>
                 <h2>Create your account</h2>
                 <p>Join AralPal and start learning today.</p>
             </div>
@@ -161,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 value="Student"
                                 <?= (($old['role'] ?? '') === 'Student' || empty($old)) ? 'checked' : '' ?>
                             >
-                            <span class="role-picker__icon">🎓</span>
+                            <span class="role-picker__icon"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i></span>
                             <div>
                                 <strong>Student</strong>
                                 <small>I want to learn</small>
@@ -174,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 value="Tutor"
                                 <?= (($old['role'] ?? '') === 'Tutor') ? 'checked' : '' ?>
                             >
-                            <span class="role-picker__icon">📚</span>
+                            <span class="role-picker__icon"><i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i></span>
                             <div>
                                 <strong>Tutor</strong>
                                 <small>I want to teach</small>
@@ -213,6 +219,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     >
                 </div>
 
+                <!-- Hourly rate — shown only for Tutors -->
+                <div class="form-group" id="hourly-rate-group" style="display:none">
+                    <label class="form-label" for="hourly_rate">Hourly Rate (₱)</label>
+                    <input
+                        class="form-input"
+                        type="number"
+                        id="hourly_rate"
+                        name="hourly_rate"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g. 250.00"
+                        value="<?= htmlspecialchars($old['hourly_rate'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
@@ -227,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 autocomplete="new-password"
                                 minlength="8"
                             >
-                            <button type="button" class="toggle-pw" aria-label="Show password" data-target="password">👁</button>
+                            <button type="button" class="toggle-pw" aria-label="Show password" data-target="password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -243,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 autocomplete="new-password"
                                 minlength="8"
                             >
-                            <button type="button" class="toggle-pw" aria-label="Show confirm password" data-target="password_confirm">👁</button>
+                            <button type="button" class="toggle-pw" aria-label="Show confirm password" data-target="password_confirm"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 </div>
@@ -280,7 +301,8 @@ document.querySelectorAll('.toggle-pw').forEach(function(btn) {
         if (!input) return;
         var show = input.type === 'password';
         input.type = show ? 'text' : 'password';
-        btn.textContent = show ? '🙈' : '👁';
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
         btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
 });
@@ -294,8 +316,18 @@ document.querySelectorAll('.role-picker__option input[type="radio"]').forEach(fu
         if (radio.checked) {
             radio.closest('.role-picker__option').classList.add('role-picker__option--active');
         }
+        // Show hourly rate field only for Tutors
+        var rateGroup = document.getElementById('hourly-rate-group');
+        if (rateGroup) rateGroup.style.display = radio.value === 'Tutor' ? 'block' : 'none';
     });
 });
+
+// Set initial state on page load
+(function() {
+    var checked = document.querySelector('.role-picker__option input[type="radio"]:checked');
+    var rateGroup = document.getElementById('hourly-rate-group');
+    if (checked && rateGroup) rateGroup.style.display = checked.value === 'Tutor' ? 'block' : 'none';
+})();
 
 /* Password strength meter */
 var pwInput = document.getElementById('password');
