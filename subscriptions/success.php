@@ -4,6 +4,7 @@
  *
  * Called after a user returns from the PayMongo hosted checkout.
  * Verifies the payment, activates the subscription, and emails a receipt.
+ * Supports mock=1 for local testing with placeholder API keys.
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -19,107 +20,128 @@ $db      = get_db();
 $current = current_user();
 $user_id = (int) $current['id'];
 
-// ── Resolve reference number ──────────────────────────────────────────────────
-// PayMongo may append ?reference=... to the return URL, or we fall back to
-// the session data stored before the redirect in checkout.php.
-$reference = $_GET['reference']
-    ?? $_SESSION['pending_payment']['reference_no']
-    ?? null;
-
 $subscription = null;
 $error        = null;
+$payment      = null;
+$reference    = null;
 
-if ($reference) {
-    $reference = trim($reference);
+$is_mock = isset($_GET['mock']) && $_GET['mock'] === '1';
 
-    // ── Verify pending payment ────────────────────────────────────────────────
-    $stmt = $db->prepare(
-        "SELECT p.id AS payment_id, p.plan_id, p.amount
-         FROM payments p
-         WHERE p.reference_no = ? AND p.user_id = ? AND p.status = 'pending'
-         LIMIT 1"
-    );
-    $stmt->execute([$reference, $user_id]);
-    $payment = $stmt->fetch();
-
-    if ($payment) {
-        $payment_id = (int) $payment['payment_id'];
-        $plan_id    = (int) $payment['plan_id'];
-
-        // ── Begin transaction ─────────────────────────────────────────────────
-        $db->beginTransaction();
-        try {
-            // Mark payment as paid
-            $upd = $db->prepare(
-                "UPDATE payments SET status = 'paid', paid_at = NOW() WHERE id = ?"
-            );
-            $upd->execute([$payment_id]);
-
-            // Insert subscription (30-day access)
-            $ins = $db->prepare(
-                "INSERT INTO subscriptions
-                    (user_id, plan_id, start_date, end_date, status, created_at)
-                 VALUES
-                    (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'active', NOW())"
-            );
-            $ins->execute([$user_id, $plan_id]);
-
-            $db->commit();
-
-            // ── Fetch plan details for the receipt ───────────────────────────
-            $plan_stmt = $db->prepare(
-                'SELECT plan_name FROM subscription_plans WHERE id = ? LIMIT 1'
-            );
-            $plan_stmt->execute([$plan_id]);
-            $plan = $plan_stmt->fetch();
-
-            // ── Fetch end date for display ────────────────────────────────────
-            $sub_stmt = $db->prepare(
-                "SELECT start_date, end_date
-                 FROM subscriptions
-                 WHERE user_id = ? AND plan_id = ? AND status = 'active'
-                 ORDER BY created_at DESC
-                 LIMIT 1"
-            );
-            $sub_stmt->execute([$user_id, $plan_id]);
-            $subscription = $sub_stmt->fetch();
-            $subscription['plan_name'] = $plan['plan_name'] ?? 'Unknown';
-            $subscription['amount']    = $payment['amount'];
-            $subscription['reference'] = $reference;
-
-            // ── Send receipt email ────────────────────────────────────────────
-            $email_body = '
-                <h2>Payment Receipt – AralPal</h2>
-                <p>Dear ' . htmlspecialchars($current['full_name'], ENT_QUOTES, 'UTF-8') . ',</p>
-                <p>Your subscription has been activated successfully.</p>
-                <table cellpadding="8" cellspacing="0">
-                    <tr><th align="left">Plan</th><td>' . htmlspecialchars($subscription['plan_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-                    <tr><th align="left">Amount Paid</th><td>₱' . htmlspecialchars(number_format((float) $subscription['amount'], 2), ENT_QUOTES, 'UTF-8') . '</td></tr>
-                    <tr><th align="left">Start Date</th><td>' . htmlspecialchars($subscription['start_date'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-                    <tr><th align="left">End Date</th><td>' . htmlspecialchars($subscription['end_date'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-                    <tr><th align="left">Reference</th><td>' . htmlspecialchars($reference, ENT_QUOTES, 'UTF-8') . '</td></tr>
-                </table>
-                <p>Thank you for subscribing to AralPal!</p>
-            ';
-            send_mail(
-                $current['email'],
-                'AralPal – Subscription Receipt',
-                $email_body
-            );
-
-            // ── Clear session payment data ────────────────────────────────────
-            unset($_SESSION['pending_payment']);
-
-        } catch (\Throwable $e) {
-            $db->rollBack();
-            error_log('AralPal subscription activation error: ' . $e->getMessage());
-            $error = 'An error occurred while activating your subscription. Please contact support.';
-        }
-    } else {
-        $error = 'Payment could not be verified. It may have already been processed, or the reference is invalid.';
+// ── Resolve the pending payment row ──────────────────────────────────────────
+if ($is_mock) {
+    // Mock path: skip API verification, use session data directly
+    $pending = $_SESSION['pending_payment'] ?? null;
+    if ($pending) {
+        $reference = $pending['reference_no'];
+        $stmt = $db->prepare(
+            "SELECT p.id AS payment_id, p.plan_id, p.amount
+             FROM payments p
+             WHERE p.id = ? AND p.user_id = ? AND p.status = 'pending'
+             LIMIT 1"
+        );
+        $stmt->execute([(int) $pending['payment_id'], $user_id]);
+        $payment = $stmt->fetch();
+    }
+    if (!$payment) {
+        $error = 'Mock payment record not found. Please try again.';
     }
 } else {
-    $error = 'No payment reference found. Please check your subscription history.';
+    // Real PayMongo path: look up by reference_no
+    $reference = trim(
+        $_GET['reference']
+        ?? $_SESSION['pending_payment']['reference_no']
+        ?? ''
+    );
+    if ($reference !== '') {
+        $stmt = $db->prepare(
+            "SELECT p.id AS payment_id, p.plan_id, p.amount
+             FROM payments p
+             WHERE p.reference_no = ? AND p.user_id = ? AND p.status = 'pending'
+             LIMIT 1"
+        );
+        $stmt->execute([$reference, $user_id]);
+        $payment = $stmt->fetch();
+        if (!$payment) {
+            $error = 'Payment could not be verified. It may have already been processed, or the reference is invalid.';
+        }
+    } else {
+        $error = 'No payment reference found. Please check your subscription history.';
+    }
+}
+
+// ── Activate subscription (shared by both paths) ──────────────────────────────
+if ($payment && !$error) {
+    $payment_id = (int) $payment['payment_id'];
+    $plan_id    = (int) $payment['plan_id'];
+
+    $db->beginTransaction();
+    try {
+        // Mark payment as paid
+        $upd = $db->prepare(
+            "UPDATE payments SET status = 'paid', paid_at = NOW() WHERE id = ?"
+        );
+        $upd->execute([$payment_id]);
+
+        // Insert subscription (30-day access)
+        $ins = $db->prepare(
+            "INSERT INTO subscriptions
+                (user_id, plan_id, start_date, end_date, status, created_at)
+             VALUES
+                (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'active', NOW())"
+        );
+        $ins->execute([$user_id, $plan_id]);
+
+        $db->commit();
+
+        // ── Fetch plan details for the receipt ───────────────────────────────
+        $plan_stmt = $db->prepare(
+            'SELECT plan_name FROM subscription_plans WHERE id = ? LIMIT 1'
+        );
+        $plan_stmt->execute([$plan_id]);
+        $plan = $plan_stmt->fetch();
+
+        // ── Fetch subscription dates for display ─────────────────────────────
+        $sub_stmt = $db->prepare(
+            "SELECT start_date, end_date
+             FROM subscriptions
+             WHERE user_id = ? AND plan_id = ? AND status = 'active'
+             ORDER BY created_at DESC
+             LIMIT 1"
+        );
+        $sub_stmt->execute([$user_id, $plan_id]);
+        $subscription = $sub_stmt->fetch();
+        $subscription['plan_name'] = $plan['plan_name'] ?? 'Unknown';
+        $subscription['amount']    = $payment['amount'];
+        $subscription['reference'] = $reference;
+
+        // ── Send receipt email ────────────────────────────────────────────────
+        $email_body = '
+            <h2>Payment Receipt – AralPal</h2>
+            <p>Dear ' . htmlspecialchars($current['full_name'] ?? $current['email'], ENT_QUOTES, 'UTF-8') . ',</p>
+            <p>Your subscription has been activated successfully.</p>
+            <table cellpadding="8" cellspacing="0">
+                <tr><th align="left">Plan</th><td>' . htmlspecialchars($subscription['plan_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th align="left">Amount Paid</th><td>₱' . htmlspecialchars(number_format((float) $subscription['amount'], 2), ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th align="left">Start Date</th><td>' . htmlspecialchars($subscription['start_date'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th align="left">End Date</th><td>' . htmlspecialchars($subscription['end_date'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th align="left">Reference</th><td>' . htmlspecialchars($reference, ENT_QUOTES, 'UTF-8') . '</td></tr>
+            </table>
+            <p>Thank you for subscribing to AralPal!</p>
+        ';
+        send_mail(
+            $current['email'],
+            'AralPal – Subscription Receipt',
+            $email_body
+        );
+
+        // ── Clear session payment data ────────────────────────────────────────
+        unset($_SESSION['pending_payment']);
+
+    } catch (\Throwable $e) {
+        $db->rollBack();
+        error_log('AralPal subscription activation error: ' . $e->getMessage());
+        $error = 'An error occurred while activating your subscription. Please contact support.';
+    }
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -130,7 +152,9 @@ require_once __DIR__ . '/../includes/header.php';
     <?php if ($subscription): ?>
 
         <div class="success-banner" role="status">
-            <span class="success-banner__icon" aria-hidden="true">✅</span>
+            <span class="success-banner__icon" aria-hidden="true">
+                <i class="fas fa-circle-check"></i>
+            </span>
             <h1>Payment Successful!</h1>
             <p>Your subscription is now active.</p>
         </div>

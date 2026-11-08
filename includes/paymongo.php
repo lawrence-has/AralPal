@@ -5,8 +5,9 @@
 
 require_once __DIR__ . '/config.php';
 
+// PAYMONGO_SECRET_KEY is defined in config.php; this is a fallback only.
 if (!defined('PAYMONGO_SECRET_KEY')) {
-    define('PAYMONGO_SECRET_KEY', 'sk_test_placeholder');
+    define('PAYMONGO_SECRET_KEY', 'sk_test_PLACEHOLDER_REPLACE_ME');
 }
 
 /**
@@ -20,12 +21,31 @@ if (!defined('PAYMONGO_SECRET_KEY')) {
  */
 function create_payment_link(float $amount, string $description, array $meta = []): array|false
 {
+    // ── Mock mode: skip real API call when using placeholder keys ─────────────
+    $placeholder_keys = ['sk_test_PLACEHOLDER_REPLACE_ME', 'sk_test_placeholder'];
+    if (in_array(PAYMONGO_SECRET_KEY, $placeholder_keys, true)) {
+        return [
+            'data' => [
+                'id'         => 'mock_' . uniqid(),
+                'attributes' => [
+                    'checkout_url' => SITE_URL . '/subscriptions/success.php?mock=1&plan_id=' . ($meta['plan_id'] ?? 0),
+                ],
+            ],
+        ];
+    }
+
     $payload = json_encode([
         'data' => [
             'attributes' => [
                 'amount'      => (int) ($amount * 100),
                 'description' => $description,
                 'remarks'     => 'AralPal payment',
+                'success_url' => SITE_URL . '/subscriptions/success.php',
+                'cancel_url'  => SITE_URL . '/subscriptions/plans.php',
+                'metadata'    => [
+                    'user_id' => $meta['user_id'] ?? 0,
+                    'plan_id' => $meta['plan_id'] ?? 0,
+                ],
             ],
         ],
     ]);

@@ -140,7 +140,7 @@ require_once __DIR__ . '/../includes/header.php';
         </form>
 
         <a class="btn btn-outline btn--block checkout-back" href="/AralPal/subscriptions/plans.php">
-            ← Back to Plans
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Plans
         </a>
 
     </div><!-- /.checkout-card -->

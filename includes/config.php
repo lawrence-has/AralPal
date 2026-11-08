@@ -31,6 +31,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ── PayMongo (replace with real keys for production) ─────────────────────────
+if (!defined('PAYMONGO_SECRET_KEY')) define('PAYMONGO_SECRET_KEY', 'sk_test_PLACEHOLDER_REPLACE_ME');
+if (!defined('PAYMONGO_PUBLIC_KEY'))  define('PAYMONGO_PUBLIC_KEY', 'pk_test_PLACEHOLDER_REPLACE_ME');
+
 // ── CSRF helpers ──────────────────────────────────────────────────────────────
 
 /**
