@@ -14,6 +14,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/email-templates.php';
 
 require_login();
 
@@ -116,18 +117,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         'complete' => 'Session complete – leave a review on AralPal',
     ];
 
-    $review_link = ($action === 'complete')
-        ? '<p><a href="' . SITE_URL . '/reviews/submit.php?booking_id=' . (int) $bk_id . '">Leave a review</a></p>'
+    $review_url = ($action === 'complete')
+        ? SITE_URL . '/reviews/submit.php?booking_id=' . (int) $bk_id
         : '';
 
-    $email_body = '
-        <p>Hi ' . htmlspecialchars($bk['student_name'], ENT_QUOTES, 'UTF-8') . ',</p>
-        <p>' . htmlspecialchars($notif_text, ENT_QUOTES, 'UTF-8') . '</p>
-        ' . $review_link . '
-        <p>– The AralPal Team</p>
-    ';
+    // Email to student
+    send_mail(
+        $bk['student_email'],
+        $email_subjects[$action],
+        email_booking_status_changed($bk, $new_status, $current['full_name'], $review_url)
+    );
 
-    send_mail($bk['student_email'], $email_subjects[$action], $email_body);
+    // When tutor accepts, also send the tutor a confirmation email
+    if ($action === 'accept') {
+        // Fetch tutor's email for confirmation
+        $tutor_user_stmt = $db->prepare('SELECT full_name, email FROM users WHERE id = ? LIMIT 1');
+        $tutor_user_stmt->execute([$user_id]);
+        $tutor_user = $tutor_user_stmt->fetch();
+        if ($tutor_user) {
+            // Build a booking array with tutor_name for the template
+            $bk_for_tutor = array_merge($bk, ['tutor_name' => $current['full_name']]);
+            send_mail(
+                $tutor_user['email'],
+                'You have accepted a booking on AralPal',
+                email_tutor_accept_confirmation($bk_for_tutor, $bk['student_name'])
+            );
+        }
+    }
 
     echo json_encode(['success' => true, 'status' => $new_status]);
     exit;

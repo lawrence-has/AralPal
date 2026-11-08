@@ -11,6 +11,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/email-templates.php';
 
 require_login();
 
@@ -83,37 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ── Email: student confirmation ───────────────────────────────────────
-    $student_subject = 'Your AralPal booking is confirmed';
-    $student_body    = '
-        <p>Hi ' . htmlspecialchars($booking['student_name'], ENT_QUOTES, 'UTF-8') . ',</p>
-        <p>Your booking has been submitted successfully. Here are the details:</p>
-        <table cellpadding="8" cellspacing="0" border="0">
-            <tr><td><strong>Tutor:</strong></td><td>' . htmlspecialchars($booking['tutor_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Subject:</strong></td><td>' . htmlspecialchars($booking['subject_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Date:</strong></td><td>' . htmlspecialchars(date('F j, Y', strtotime($booking['session_date'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Time:</strong></td><td>' . htmlspecialchars(date('g:i A', strtotime($booking['start_time'])), ENT_QUOTES, 'UTF-8') . ' – ' . htmlspecialchars(date('g:i A', strtotime($booking['end_time'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Status:</strong></td><td>Pending</td></tr>
-        </table>
-        <p>The tutor will review your request. You can track it in <a href="' . SITE_URL . '/booking/my-bookings.php">My Bookings</a>.</p>
-        <p>– The AralPal Team</p>
-    ';
-    send_mail($booking['student_email'], $student_subject, $student_body);
+    $student_subject = 'Your AralPal booking request has been sent';
+    send_mail($booking['student_email'], $student_subject, email_booking_confirmed_student($booking, $booking['tutor_name']));
 
     // ── Email: tutor new request ──────────────────────────────────────────
     $tutor_subject = 'New booking request on AralPal';
-    $tutor_body    = '
-        <p>Hi ' . htmlspecialchars($booking['tutor_name'], ENT_QUOTES, 'UTF-8') . ',</p>
-        <p>You have a new booking request:</p>
-        <table cellpadding="8" cellspacing="0" border="0">
-            <tr><td><strong>Student:</strong></td><td>' . htmlspecialchars($booking['student_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Subject:</strong></td><td>' . htmlspecialchars($booking['subject_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Date:</strong></td><td>' . htmlspecialchars(date('F j, Y', strtotime($booking['session_date'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
-            <tr><td><strong>Time:</strong></td><td>' . htmlspecialchars(date('g:i A', strtotime($booking['start_time'])), ENT_QUOTES, 'UTF-8') . ' – ' . htmlspecialchars(date('g:i A', strtotime($booking['end_time'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
-        </table>
-        <p>Please log in to <a href="' . SITE_URL . '/booking/my-bookings.php">My Bookings</a> to accept or decline.</p>
-        <p>– The AralPal Team</p>
-    ';
-    send_mail($booking['tutor_email'], $tutor_subject, $tutor_body);
+    send_mail($booking['tutor_email'], $tutor_subject, email_booking_confirmed_tutor($booking, $booking['student_name']));
 
     header('Location: /AralPal/booking/my-bookings.php?confirmed=1');
     exit;
@@ -142,7 +118,7 @@ require_once __DIR__ . '/../includes/header.php';
 <main class="container booking-container">
 
     <div class="card confirm-card">
-        <div class="confirm-card__icon" aria-hidden="true">✅</div>
+        <div class="confirm-card__icon" aria-hidden="true"><i class="fas fa-check-circle" style="color:#16a34a;font-size:2.5rem;" aria-hidden="true"></i></div>
         <h1 class="confirm-card__title">Booking Submitted!</h1>
         <p class="confirm-card__sub">Review the details below and click <strong>Confirm</strong> to notify both parties.</p>
 
@@ -198,7 +174,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <div class="confirm-card__actions">
                 <button type="submit" class="btn btn-primary btn-lg">
-                    📧 Confirm &amp; Notify
+                    Confirm &amp; Notify
                 </button>
                 <a href="/AralPal/booking/my-bookings.php" class="btn btn-outline">
                     My Bookings

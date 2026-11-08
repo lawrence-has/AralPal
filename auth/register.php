@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/mailer.php';
+require_once __DIR__ . '/../includes/email-templates.php';
 
 if (is_logged_in()) {
     $role = current_user()['role_name'];
@@ -72,10 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             send_mail(
                 $email,
-                'Welcome to AralPal!',
-                '<h2>Welcome, ' . htmlspecialchars($full_name, ENT_QUOTES, 'UTF-8') . '!</h2>'
-                . '<p>Your account has been created. You can now sign in and start learning today!</p>'
-                . '<p><a href="http://localhost/AralPal/auth/login.php">Sign in to AralPal</a></p>'
+                'Welcome to AralPal, ' . $full_name . '!',
+                email_welcome($full_name)
             );
 
             header('Location: /AralPal/auth/login.php?registered=1');

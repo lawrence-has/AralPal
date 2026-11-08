@@ -21,7 +21,8 @@ if (!defined('SMTP_PASS')) {
 }
 
 /**
- * Sends an HTML email via SMTP.
+ * Sends an HTML email via SMTP, with a fallback to PHP's mail() when no
+ * SMTP password is configured.
  *
  * @param string $to      Recipient email address
  * @param string $subject Email subject
@@ -31,6 +32,14 @@ if (!defined('SMTP_PASS')) {
  */
 function send_mail(string $to, string $subject, string $body): bool
 {
+    // If no SMTP password configured, fall back to PHP mail()
+    if (empty(SMTP_PASS)) {
+        $headers  = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: AralPal <" . SMTP_USER . ">\r\n";
+        return mail($to, $subject, $body, $headers);
+    }
+
     try {
         $mail = new PHPMailer(true);
 
