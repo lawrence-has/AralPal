@@ -2,11 +2,19 @@
 $pageTitle = "AralPal – Learn at Your Own Pace";
 
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/strapi.php';
 
-/* Optional CMS integration */
+/* ── CMS: try Strapi first, fall back to local DB ── */
 $cmsContent       = [];
 $cmsAnnouncements = [];
-if (is_file(__DIR__ . '/admin/cms-config.php')) {
+
+// Try Strapi
+$strapiHomepage = strapi_get_homepage();
+$strapiLessons  = strapi_get_lessons();
+$strapiAnnouncements = strapi_get_announcements();
+
+// Fall back to local CMS DB if Strapi returns nothing
+if (empty($strapiHomepage['hero_title']) && is_file(__DIR__ . '/admin/cms-config.php')) {
     try {
         require_once __DIR__ . '/admin/cms-config.php';
         $cmsRows = db()->query('SELECT section_key, title, body FROM cms_content')->fetchAll();
@@ -19,14 +27,17 @@ if (is_file(__DIR__ . '/admin/cms-config.php')) {
              ORDER BY published_at DESC, created_at DESC LIMIT 5'
         )->fetchAll();
     } catch (Throwable $e) {}
+} elseif (!empty($strapiAnnouncements)) {
+    $cmsAnnouncements = $strapiAnnouncements;
 }
 
-$homeHeroTitle       = $cmsContent['home_hero_title']['title']       ?? 'Learn something new,';
-$homeHeroDescription = $cmsContent['home_hero_description']['body']  ?? 'Welcome to AralPal! Explore lessons, test your knowledge with quizzes, connect with expert tutors, and track your learning progress — all in one place.';
-$aboutTitle          = $cmsContent['about_title']['title']           ?? 'Learning is better with AralPal.';
-$aboutBody           = $cmsContent['about_body']['body']             ?? 'A student learning platform designed to make studying more accessible, organized, and engaging — whether you\'re a beginner or brushing up on the basics.';
+$homeHeroTitle       = $strapiHomepage['hero_title']       ?: ($cmsContent['home_hero_title']['title']      ?? 'Learn something new,');
+$homeHeroDescription = $strapiHomepage['hero_description'] ?: ($cmsContent['home_hero_description']['body'] ?? 'Welcome to AralPal! Explore lessons, test your knowledge with quizzes, connect with expert tutors, and track your learning progress — all in one place.');
+$aboutTitle          = $strapiHomepage['about_title']      ?: ($cmsContent['about_title']['title']          ?? 'Learning is better with AralPal.');
+$aboutBody           = $strapiHomepage['about_body']       ?: ($cmsContent['about_body']['body']            ?? 'A student learning platform designed to make studying more accessible, organized, and engaging — whether you\'re a beginner or brushing up on the basics.');
 
-$lessons = [
+// Use Strapi lessons if available, otherwise fall back to hardcoded lessons
+$lessons = !empty($strapiLessons) ? $strapiLessons : [
     [
         "icon"        => "💻",
         "category"    => "Programming",
@@ -90,6 +101,7 @@ try {
     <meta name="description" content="AralPal – a free student learning platform with lessons, quizzes, progress tracking, and expert tutors.">
     <link rel="icon" type="image/png" href="assets/aralpal-logo.png">
     <link rel="stylesheet" href="assets/Style.css?v=20261104-realfix">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script>
     (function(){var s=localStorage.getItem('ap-theme'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',(s?s==='dark':d)?'dark':'light')})();
     </script>
@@ -143,28 +155,28 @@ try {
 
         <div class="learning-stats">
             <div class="stat-row">
-                <span class="stat-icon">📖</span>
+                <span class="stat-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span>
                 <div class="stat-info">
                     <span class="stat-label">Available Lessons</span>
                     <span class="stat-value"><?= count($lessons) ?> Lessons Ready</span>
                 </div>
             </div>
             <div class="stat-row">
-                <span class="stat-icon">👨‍🏫</span>
+                <span class="stat-icon"><i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i></span>
                 <div class="stat-info">
                     <span class="stat-label">Expert Tutors</span>
                     <span class="stat-value"><?= $totalTutors > 0 ? $totalTutors . ' tutors online' : 'Book a session' ?></span>
                 </div>
             </div>
             <div class="stat-row">
-                <span class="stat-icon">🏆</span>
+                <span class="stat-icon"><i class="fa-solid fa-trophy" aria-hidden="true"></i></span>
                 <div class="stat-info">
                     <span class="stat-label">Quizzes</span>
                     <span class="stat-value">Test your knowledge</span>
                 </div>
             </div>
             <div class="stat-row">
-                <span class="stat-icon">📈</span>
+                <span class="stat-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span>
                 <div class="stat-info">
                     <span class="stat-label">Progress Tracking</span>
                     <span class="stat-value">See your growth</span>
@@ -172,15 +184,6 @@ try {
             </div>
         </div>
 
-        <div class="progress-wrap">
-            <label>
-                <span>Sample Course Progress</span>
-                <span id="progressLabel">0%</span>
-            </label>
-            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-        </div>
     </div>
 </section>
 
@@ -315,32 +318,32 @@ try {
 
     <div class="feature-grid">
         <article class="feature-card">
-            <div class="feature-icon">📖</div>
+            <div class="feature-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div>
             <h3>Self-Paced Lessons</h3>
             <p>Study on your own schedule. No deadlines, no pressure — just focused learning at a pace that works for you.</p>
         </article>
         <article class="feature-card">
-            <div class="feature-icon">✍️</div>
+            <div class="feature-icon"><i class="fa-solid fa-pencil" aria-hidden="true"></i></div>
             <h3>Interactive Quizzes</h3>
             <p>Test what you've learned after each topic. Get instant feedback so you know exactly where to focus next.</p>
         </article>
         <article class="feature-card">
-            <div class="feature-icon">📈</div>
+            <div class="feature-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
             <h3>Progress Tracking</h3>
             <p>Watch your progress grow lesson by lesson. Visual indicators keep you motivated and on track.</p>
         </article>
         <article class="feature-card">
-            <div class="feature-icon">👨‍🏫</div>
+            <div class="feature-icon"><i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i></div>
             <h3>Expert Tutors</h3>
             <p>Book one-on-one sessions with qualified tutors. Get personalised help when you need it most.</p>
         </article>
         <article class="feature-card">
-            <div class="feature-icon">🔍</div>
+            <div class="feature-icon"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></div>
             <h3>Smart Tutor Search</h3>
             <p>Filter tutors by subject, rating, availability, and price. Find the perfect match in seconds.</p>
         </article>
         <article class="feature-card">
-            <div class="feature-icon">🔔</div>
+            <div class="feature-icon"><i class="fa-solid fa-bell" aria-hidden="true"></i></div>
             <h3>Real-Time Notifications</h3>
             <p>Stay updated with booking confirmations, session reminders, and platform announcements.</p>
         </article>
@@ -358,16 +361,16 @@ try {
         <div class="hiw-card">
             <div class="hiw-card__step">01</div>
             <div class="hiw-card__icon-wrap">
-                <span class="hiw-card__icon">📝</span>
+                <span class="hiw-card__icon"><i class="fa-solid fa-user-plus" aria-hidden="true"></i></span>
             </div>
             <h3>Create a Free Account</h3>
             <p>Sign up as a Student or Tutor in under a minute. No credit card, no commitment.</p>
             <a class="hiw-card__link" href="auth/register.php">Register now →</a>
         </div>
-        <div class="hiw-card hiw-card--accent">
+        <div class="hiw-card">
             <div class="hiw-card__step">02</div>
             <div class="hiw-card__icon-wrap">
-                <span class="hiw-card__icon">📚</span>
+                <span class="hiw-card__icon"><i class="fa-solid fa-book" aria-hidden="true"></i></span>
             </div>
             <h3>Explore &amp; Learn</h3>
             <p>Browse free lessons, take interactive quizzes, and track your progress — all at your own pace.</p>
@@ -376,7 +379,7 @@ try {
         <div class="hiw-card">
             <div class="hiw-card__step">03</div>
             <div class="hiw-card__icon-wrap">
-                <span class="hiw-card__icon">🎯</span>
+                <span class="hiw-card__icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></span>
             </div>
             <h3>Book a Tutor</h3>
             <p>When you need personal guidance, find a qualified tutor, pick a time, and book instantly.</p>
@@ -423,10 +426,7 @@ try {
             $planName   = $plan['plan_name'] ?? $plan['name'] ?? 'Plan';
             $isFeatured = $i === 1;
             ?>
-            <div class="pricing-tile <?= $isFeatured ? 'pricing-tile--popular' : '' ?>">
-                <?php if ($isFeatured): ?>
-                    <div class="pricing-tile__popular-bar">⭐ Most Popular</div>
-                <?php endif; ?>
+            <div class="pricing-tile">
 
                 <div class="pricing-tile__top">
                     <span class="pricing-tile__name"><?= htmlspecialchars($planName) ?></span>
@@ -452,7 +452,7 @@ try {
                     </ul>
                 <?php endif; ?>
 
-                <a class="<?= $isFeatured ? 'primary-btn' : 'outline-btn' ?> pricing-tile__cta"
+                <a class="outline-btn pricing-tile__cta"
                    href="auth/register.php">
                     <?= $price <= 0 ? 'Get Started Free' : 'Get Started' ?>
                 </a>
@@ -504,7 +504,7 @@ try {
             <div><span>📈</span><strong>Track progress</strong><small>See your growth over time</small></div>
         </div>
         <div class="hero-actions" style="justify-content:center">
-            <a class="primary-btn about-btn-primary" href="auth/register.php">🎒 Join Free Today</a>
+            <a class="primary-btn about-btn-primary" href="auth/register.php">Join Free Today</a>
             <a class="outline-btn about-btn-outline" href="#lessons">Explore Lessons</a>
         </div>
     </div>

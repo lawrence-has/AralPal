@@ -5058,3 +5058,208 @@ html[data-theme="dark"] .aralpal-quiz-dashboard .quiz-reference-login{background
 html[data-theme="dark"] .aralpal-quiz-dashboard .quiz-reference-actions .theme-toggle{background:#243a59!important}
 @media(max-width:700px){.aralpal-quiz-dashboard .quiz-reference-navbar{min-height:62px;justify-content:space-between;gap:12px;padding:0 14px}.aralpal-quiz-dashboard .quiz-reference-links{justify-content:flex-start;gap:17px;overflow-x:auto;scrollbar-width:none}.aralpal-quiz-dashboard .quiz-reference-links::-webkit-scrollbar{display:none}.aralpal-quiz-dashboard .quiz-reference-links a{font-size:.82rem}.aralpal-quiz-dashboard .quiz-reference-login{min-width:65px;min-height:39px;padding:0 13px;font-size:.82rem}.aralpal-quiz-dashboard .quiz-reference-actions .theme-toggle{width:39px!important;height:39px!important}.aralpal-quiz-dashboard .quiz-page{padding-top:16px!important}}
 @media(max-width:480px){.aralpal-quiz-dashboard .quiz-reference-navbar{flex-wrap:nowrap;padding:0 9px;gap:8px}.aralpal-quiz-dashboard .quiz-reference-links{flex:1;gap:11px}.aralpal-quiz-dashboard .quiz-reference-links a{font-size:.7rem}.aralpal-quiz-dashboard .quiz-reference-actions{flex:0 0 auto;gap:6px}.aralpal-quiz-dashboard .quiz-reference-login{min-width:54px;min-height:36px;padding:0 9px;font-size:.75rem}.aralpal-quiz-dashboard .quiz-reference-actions .theme-toggle{width:35px!important;height:35px!important}}
+
+
+/* ==========================================================
+   MOBILE RESPONSIVENESS FIXES
+   ========================================================== */
+
+/* ── Navbar: hamburger menu ── */
+.nav-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: var(--clr-text);
+    font-size: 1.4rem;
+}
+
+@media (max-width: 680px) {
+    .nav-hamburger { display: block; }
+
+    .navbar {
+        flex-wrap: wrap;
+        gap: 0;
+        padding-inline: var(--sp-4);
+    }
+
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        padding: var(--sp-3) 0;
+        gap: var(--sp-2);
+        border-top: 1px solid var(--clr-border);
+    }
+
+    .nav-links.open { display: flex; }
+
+    .nav-links a {
+        padding: var(--sp-3) var(--sp-2);
+        font-size: .95rem;
+    }
+
+    .nav-actions {
+        gap: var(--sp-2);
+    }
+
+    .nav-actions .btn { padding: 8px 14px; font-size: .82rem; }
+}
+
+/* ── Hero section ── */
+@media (max-width: 768px) {
+    .hero {
+        padding-top: 32px;
+        padding-bottom: 32px;
+        text-align: center;
+    }
+
+    .hero-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .hero-trust {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+    }
+
+    .hero-card { display: none; }
+}
+
+/* ── Pricing cards ── */
+@media (max-width: 700px) {
+    .pricing-grid,
+    .pricing-cards-grid {
+        grid-template-columns: 1fr !important;
+        max-width: 380px;
+        margin-inline: auto;
+    }
+
+    .pricing-tile { margin-inline: 0; }
+}
+
+/* ── Lesson tiles ── */
+@media (max-width: 600px) {
+    .lesson-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .lesson-tile { max-width: 100%; }
+
+    .lesson-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-wrap { width: 100%; }
+
+    .filter-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: var(--sp-2);
+    }
+}
+
+/* ── Feature grid ── */
+@media (max-width: 640px) {
+    .feature-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ── How it works steps ── */
+@media (max-width: 700px) {
+    .hiw-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ── Stats row ── */
+@media (max-width: 600px) {
+    .stats-row {
+        grid-template-columns: 1fr 1fr !important;
+        gap: var(--sp-3);
+    }
+}
+
+/* ── Auth pages (login/register) ── */
+@media (max-width: 700px) {
+    .auth-split {
+        flex-direction: column;
+    }
+
+    .auth-split__left {
+        display: none;
+    }
+
+    .auth-split__right {
+        width: 100%;
+        padding: var(--sp-6) var(--sp-4);
+    }
+
+    .auth-form-card {
+        box-shadow: none;
+        border: none;
+        padding: var(--sp-4);
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+}
+
+/* ── Dashboard grid ── */
+@media (max-width: 640px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .quick-links {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+/* ── Booking form ── */
+@media (max-width: 640px) {
+    .booking-grid {
+        grid-template-columns: 1fr !important;
+        padding-inline: var(--sp-4);
+    }
+}
+
+/* ── Tutor profile ── */
+@media (max-width: 700px) {
+    .tutor-profile-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tutor-profile__sidebar {
+        position: static !important;
+    }
+}
+
+/* ── Tables: horizontal scroll on small screens ── */
+@media (max-width: 600px) {
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    table { min-width: 480px; }
+}
+
+/* ── General container padding on mobile ── */
+@media (max-width: 480px) {
+    .container {
+        padding-inline: var(--sp-4) !important;
+    }
+
+    .page-header h1 { font-size: 1.6rem; }
+
+    .section-heading h2 { font-size: 1.5rem; }
+
+    .btn, .primary-btn, .outline-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

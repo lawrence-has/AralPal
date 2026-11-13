@@ -23,6 +23,7 @@ if (is_logged_in() && isset($_ap_user['id'])) {
     <title><?= htmlspecialchars($page_title ?? 'AralPal', ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="icon" type="image/png" href="/AralPal/assets/aralpal-logo.png">
     <link rel="stylesheet" href="/AralPal/assets/Style.css?v=20261104-realfix">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
 
@@ -31,8 +32,13 @@ if (is_logged_in() && isset($_ap_user['id'])) {
     <!-- Logo -->
     <a class="logo logo-brand" href="/AralPal/index.php" aria-label="AralPal home"><img src="/AralPal/assets/aralpal-logo.png" alt="" class="brand-logo" width="34" height="34"><span>AralPal</span></a>
 
+    <!-- Hamburger (mobile) -->
+    <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu" aria-expanded="false">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+    </button>
+
     <!-- Primary nav links -->
-    <ul class="nav-links">
+    <ul class="nav-links" id="navLinks">
         <li><a href="/AralPal/index.php">Home</a></li>
         <li><a href="/AralPal/tutors/index.php">Find a Tutor</a></li>
         <li><a href="/AralPal/subscriptions/plans.php">Plans</a></li>
@@ -139,6 +145,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 dropToggle.setAttribute('aria-expanded', 'false');
                 dropMenu.classList.remove('open');
             }
+        });
+    }
+
+    /* Hamburger menu */
+    var hamburger = document.getElementById('navHamburger');
+    var navLinks  = document.getElementById('navLinks');
+    if (hamburger && navLinks) {
+        hamburger.addEventListener('click', function () {
+            var open = navLinks.classList.toggle('open');
+            hamburger.setAttribute('aria-expanded', String(open));
+            var icon = hamburger.querySelector('i');
+            if (icon) icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
         });
     }
 

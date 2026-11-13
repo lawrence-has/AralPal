@@ -66,6 +66,7 @@ $reset      = isset($_GET['reset'])      && $_GET['reset']      === '1';
     <title>Login – AralPal</title>
     <link rel="icon" type="image/png" href="/AralPal/assets/aralpal-logo.png">
     <link rel="stylesheet" href="/AralPal/assets/Style.css?v=20261104-realfix">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script>(function(){var s=localStorage.getItem('ap-theme'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',(s?s==='dark':d)?'dark':'light')})();</script>
 </head>
 <body class="auth-body">
@@ -89,19 +90,19 @@ $reset      = isset($_GET['reset'])      && $_GET['reset']      === '1';
         </div>
         <div class="auth-split__features">
             <div class="auth-feature">
-                <span class="auth-feature__icon">📚</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-book" aria-hidden="true"></i></span>
                 <span>Free self-paced lessons</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">✍️</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-pencil" aria-hidden="true"></i></span>
                 <span>Interactive quizzes</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">👨‍🏫</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i></span>
                 <span>Expert tutors on demand</span>
             </div>
             <div class="auth-feature">
-                <span class="auth-feature__icon">📈</span>
+                <span class="auth-feature__icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span>
                 <span>Progress tracking</span>
             </div>
         </div>
@@ -112,24 +113,24 @@ $reset      = isset($_GET['reset'])      && $_GET['reset']      === '1';
         <div class="auth-form-card">
 
             <div class="auth-form-card__header">
-                <div class="auth-form-card__icon">🔑</div>
+                <div class="auth-form-card__icon"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i></div>
                 <h2>Welcome back</h2>
                 <p>Sign in to continue your learning journey.</p>
             </div>
 
             <?php if ($registered): ?>
                 <div class="alert alert-success" role="status">
-                    🎉 Account created! You can now sign in.
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i> Account created! You can now sign in.
                 </div>
             <?php endif; ?>
             <?php if ($reset): ?>
                 <div class="alert alert-success" role="status">
-                    ✅ Password reset successfully. Sign in with your new password.
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i> Password reset successfully. Sign in with your new password.
                 </div>
             <?php endif; ?>
             <?php if ($error !== ''): ?>
                 <div class="alert alert-error" role="alert">
-                    ⚠️ <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
 
@@ -165,7 +166,7 @@ $reset      = isset($_GET['reset'])      && $_GET['reset']      === '1';
                             required
                             autocomplete="current-password"
                         >
-                        <button type="button" class="toggle-pw" aria-label="Show password" data-target="password">👁</button>
+                        <button type="button" class="toggle-pw" aria-label="Show password" data-target="password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
                     </div>
                 </div>
 
@@ -195,7 +196,8 @@ document.querySelectorAll('.toggle-pw').forEach(function(btn) {
         if (!input) return;
         var show = input.type === 'password';
         input.type = show ? 'text' : 'password';
-        btn.textContent = show ? '🙈' : '👁';
+        var icon = btn.querySelector('i');
+        if (icon) icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
         btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
 });
