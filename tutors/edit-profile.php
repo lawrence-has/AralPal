@@ -165,7 +165,7 @@ $show_saved = isset($_GET['saved']) && $_GET['saved'] === '1';
 $page_title = 'Edit Profile';
 $csrf       = generate_csrf();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -338,7 +338,7 @@ require_once __DIR__ . '/../includes/header.php';
     </tr>
 </template>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>
 
 <script>
 /* ──────────────────────────────────────────────────────────────────

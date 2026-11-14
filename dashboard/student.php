@@ -114,7 +114,7 @@ $status_badges = [
 ];
 
 $page_title = 'Student Dashboard';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="dash">
@@ -495,4 +495,4 @@ require_once __DIR__ . '/../includes/header.php';
 .muted { color: var(--clr-muted); font-size: .82rem; }
 </style>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

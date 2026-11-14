@@ -103,7 +103,7 @@ $avatar = htmlspecialchars(
     ENT_QUOTES, 'UTF-8'
 );
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -297,4 +297,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

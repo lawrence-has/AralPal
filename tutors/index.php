@@ -14,6 +14,15 @@ require_login();
 
 $page_title = 'Find a Tutor';
 
+// ── Subscription tier for feature gating ──────────────────────────────────
+// Resolved server-side only — never from session or GET params.
+$_current      = current_user();
+$_uid          = (int) ($_current['id'] ?? 0);
+$_role         = (string) ($_current['role_name'] ?? '');
+$_plan_tier    = get_student_plan_tier($_uid, $_role);    // 0=Free, 1=Basic, 2=Premium
+$_has_basic    = $_plan_tier >= 1;   // Subject filters
+$_has_premium  = $_plan_tier >= 2;   // Advanced filters, Compare tutors
+
 // ── AJAX: toggle favorite ──────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset($_POST['action'])
@@ -59,11 +68,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 
 // ── Build search / filter query ───────────────────────────────────────────
 $q          = trim($_GET['q']          ?? '');
-$subject_id = (int) ($_GET['subject_id'] ?? 0);
-$min_rate   = strlen($_GET['min_rate'] ?? '') ? (float) $_GET['min_rate'] : null;
-$max_rate   = strlen($_GET['max_rate'] ?? '') ? (float) $_GET['max_rate'] : null;
-$min_rating = strlen($_GET['min_rating'] ?? '') ? (float) $_GET['min_rating'] : null;
-$day_of_week = trim($_GET['day_of_week'] ?? '');
+
+// Subject filter — Basic plan and above only
+$subject_id = $_has_basic  ? (int) ($_GET['subject_id'] ?? 0) : 0;
+
+// Advanced filters — Premium only
+$min_rate    = ($_has_premium && strlen($_GET['min_rate']   ?? '')) ? (float) $_GET['min_rate']   : null;
+$max_rate    = ($_has_premium && strlen($_GET['max_rate']   ?? '')) ? (float) $_GET['max_rate']   : null;
+$min_rating  = ($_has_premium && strlen($_GET['min_rating'] ?? '')) ? (float) $_GET['min_rating'] : null;
+$day_of_week = $_has_premium ? trim($_GET['day_of_week'] ?? '') : '';
 
 $db = get_db();
 
@@ -151,7 +164,7 @@ $csrf = generate_csrf();
 
 $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -176,22 +189,38 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
 
             <div class="filter-group">
-                <label for="subject_id">Subject</label>
-                <select id="subject_id" name="subject_id">
-                    <option value="0">All subjects</option>
-                    <?php foreach ($subjects_list as $sub): ?>
-                        <option
-                            value="<?= (int) $sub['id'] ?>"
-                            <?= $subject_id === (int) $sub['id'] ? 'selected' : '' ?>
-                        >
-                            <?= htmlspecialchars($sub['subject_name'], ENT_QUOTES, 'UTF-8') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="subject_id">
+                    Subject
+                    <?php if (!$_has_basic): ?>
+                        <span class="plan-lock" title="Requires Basic plan">🔒 <a href="/AralPal/subscriptions/plans.php">Basic+</a></span>
+                    <?php endif; ?>
+                </label>
+                <?php if ($_has_basic): ?>
+                    <select id="subject_id" name="subject_id">
+                        <option value="0">All subjects</option>
+                        <?php foreach ($subjects_list as $sub): ?>
+                            <option
+                                value="<?= (int) $sub['id'] ?>"
+                                <?= $subject_id === (int) $sub['id'] ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars($sub['subject_name'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <select disabled aria-disabled="true" class="filter-locked">
+                        <option>Upgrade to filter by subject</option>
+                    </select>
+                <?php endif; ?>
             </div>
 
             <div class="filter-group">
-                <label for="min_rate">Min Rate (₱)</label>
+                <label for="min_rate">
+                    Min Rate (₱)
+                    <?php if (!$_has_premium): ?>
+                        <span class="plan-lock" title="Requires Premium plan">🔒 <a href="/AralPal/subscriptions/plans.php">Premium</a></span>
+                    <?php endif; ?>
+                </label>
                 <input
                     type="number"
                     id="min_rate"
@@ -200,11 +229,17 @@ require_once __DIR__ . '/../includes/header.php';
                     step="0.01"
                     value="<?= htmlspecialchars((string) ($min_rate ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                     placeholder="0"
+                    <?= !$_has_premium ? 'disabled aria-disabled="true" class="filter-locked"' : '' ?>
                 >
             </div>
 
             <div class="filter-group">
-                <label for="max_rate">Max Rate (₱)</label>
+                <label for="max_rate">
+                    Max Rate (₱)
+                    <?php if (!$_has_premium): ?>
+                        <span class="plan-lock" title="Requires Premium plan">🔒 <a href="/AralPal/subscriptions/plans.php">Premium</a></span>
+                    <?php endif; ?>
+                </label>
                 <input
                     type="number"
                     id="max_rate"
@@ -213,37 +248,60 @@ require_once __DIR__ . '/../includes/header.php';
                     step="0.01"
                     value="<?= htmlspecialchars((string) ($max_rate ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                     placeholder="No limit"
+                    <?= !$_has_premium ? 'disabled aria-disabled="true" class="filter-locked"' : '' ?>
                 >
             </div>
 
             <div class="filter-group">
-                <label for="min_rating">Min Rating</label>
-                <select id="min_rating" name="min_rating">
-                    <option value="">Any</option>
-                    <?php for ($r = 1; $r <= 5; $r++): ?>
-                        <option
-                            value="<?= $r ?>"
-                            <?= (string) $min_rating === (string) $r ? 'selected' : '' ?>
-                        >
-                            <?= $r ?>★+
-                        </option>
-                    <?php endfor; ?>
-                </select>
+                <label for="min_rating">
+                    Min Rating
+                    <?php if (!$_has_premium): ?>
+                        <span class="plan-lock" title="Requires Premium plan">🔒 <a href="/AralPal/subscriptions/plans.php">Premium</a></span>
+                    <?php endif; ?>
+                </label>
+                <?php if ($_has_premium): ?>
+                    <select id="min_rating" name="min_rating">
+                        <option value="">Any</option>
+                        <?php for ($r = 1; $r <= 5; $r++): ?>
+                            <option
+                                value="<?= $r ?>"
+                                <?= (string) $min_rating === (string) $r ? 'selected' : '' ?>
+                            >
+                                <?= $r ?>★+
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                <?php else: ?>
+                    <select disabled aria-disabled="true" class="filter-locked">
+                        <option>Upgrade to filter by rating</option>
+                    </select>
+                <?php endif; ?>
             </div>
 
             <div class="filter-group">
-                <label for="day_of_week">Day Available</label>
-                <select id="day_of_week" name="day_of_week">
-                    <option value="">Any day</option>
-                    <?php foreach ($days as $day): ?>
-                        <option
-                            value="<?= htmlspecialchars($day, ENT_QUOTES, 'UTF-8') ?>"
-                            <?= $day_of_week === $day ? 'selected' : '' ?>
-                        >
-                            <?= htmlspecialchars($day, ENT_QUOTES, 'UTF-8') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="day_of_week">
+                    Day Available
+                    <?php if (!$_has_premium): ?>
+                        <span class="plan-lock" title="Requires Premium plan">🔒 <a href="/AralPal/subscriptions/plans.php">Premium</a></span>
+                    <?php endif; ?>
+                </label>
+                <?php if ($_has_premium): ?>
+                    <select id="day_of_week" name="day_of_week">
+                        <option value="">Any day</option>
+                        <?php foreach ($days as $day): ?>
+                            <option
+                                value="<?= htmlspecialchars($day, ENT_QUOTES, 'UTF-8') ?>"
+                                <?= $day_of_week === $day ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars($day, ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <select disabled aria-disabled="true" class="filter-locked">
+                        <option>Upgrade to filter by day</option>
+                    </select>
+                <?php endif; ?>
             </div>
 
             <div class="filter-group filter-group--action">
@@ -342,16 +400,22 @@ require_once __DIR__ . '/../includes/header.php';
                                 Book
                             </a>
 
-                            <label class="compare-label" title="Add to compare">
-                                <input
-                                    type="checkbox"
-                                    name="ids[]"
-                                    value="<?= (int) $tutor['tutor_id'] ?>"
-                                    class="compare-checkbox"
-                                    aria-label="Compare <?= htmlspecialchars($tutor['full_name'], ENT_QUOTES, 'UTF-8') ?>"
-                                >
-                                <span>Compare</span>
-                            </label>
+                            <?php if ($_has_premium): ?>
+                                <label class="compare-label" title="Add to compare">
+                                    <input
+                                        type="checkbox"
+                                        name="ids[]"
+                                        value="<?= (int) $tutor['tutor_id'] ?>"
+                                        class="compare-checkbox"
+                                        aria-label="Compare <?= htmlspecialchars($tutor['full_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                    >
+                                    <span>Compare</span>
+                                </label>
+                            <?php else: ?>
+                                <span class="compare-label compare-label--locked" title="Compare tutors requires Premium plan">
+                                    🔒 <a href="/AralPal/subscriptions/plans.php" tabindex="-1">Compare</a>
+                                </span>
+                            <?php endif; ?>
 
                         </div><!-- /.tutor-card__actions -->
 
@@ -374,7 +438,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>
 
 <script>
 /* ──────────────────────────────────────────────────────────────────

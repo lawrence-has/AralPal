@@ -95,7 +95,7 @@ $page_title  = 'Notifications';
 $csrf_token  = generate_csrf();
 $unread_count = count(array_filter($notifications, fn($n) => !(int) $n['is_read']));
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container notif-page">
@@ -365,4 +365,4 @@ require_once __DIR__ . '/../includes/header.php';
 })();
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

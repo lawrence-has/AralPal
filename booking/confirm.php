@@ -83,6 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Booking mismatch.');
     }
 
+    // Idempotency guard — only send emails once, when the booking is still pending.
+    // Re-POSTing for an already-confirmed/accepted/completed booking is silently
+    // redirected to avoid duplicate emails.
+    if ($booking['status'] !== 'pending') {
+        header('Location: /AralPal/booking/my-bookings.php');
+        exit;
+    }
+
     // ── Email: student confirmation ───────────────────────────────────────
     $student_subject = 'Your AralPal booking request has been sent';
     send_mail($booking['student_email'], $student_subject, email_booking_confirmed_student($booking, $booking['tutor_name']));
@@ -112,7 +120,7 @@ $status_labels = [
 ];
 $status_info = $status_labels[$booking['status']] ?? ['label' => e($booking['status']), 'class' => 'badge-secondary'];
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container booking-container">
@@ -185,4 +193,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

@@ -51,7 +51,7 @@ $sub_stmt->execute([$user_id]);
 $active_plan_ids = $sub_stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
 $active_plan_ids = array_map('intval', $active_plan_ids);
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -132,4 +132,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

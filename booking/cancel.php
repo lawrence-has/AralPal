@@ -62,9 +62,9 @@ if ((int) $booking['student_id'] !== $user_id) {
     exit('Access denied.');
 }
 
-// Only pending bookings may be cancelled via this page
-if ($booking['status'] !== 'pending') {
-    flash('error', 'Only pending bookings can be cancelled.');
+// Pending and accepted bookings may be cancelled; completed/declined/cancelled cannot
+if (!in_array($booking['status'], ['pending', 'accepted'], true)) {
+    flash('error', 'Only pending or accepted bookings can be cancelled.');
     header('Location: /AralPal/booking/my-bookings.php');
     exit;
 }
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$fresh) {
             $error = 'Booking not found.';
-        } elseif ($fresh['status'] !== 'pending') {
+        } elseif (!in_array($fresh['status'], ['pending', 'accepted'], true)) {
             $error = 'This booking can no longer be cancelled.';
         } elseif (strtotime($fresh['session_date']) <= strtotime('now')) {
             $error = 'Cannot cancel a booking whose session date has already passed.';
@@ -115,6 +115,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ';
         send_mail($booking['tutor_email'], $tutor_subject, $tutor_body);
 
+        // Confirmation email to the student who cancelled
+        $student_email   = $db->prepare('SELECT email FROM users WHERE id = ? LIMIT 1');
+        $student_email->execute([$user_id]);
+        $student_row = $student_email->fetch();
+        if ($student_row) {
+            $student_cancel_body = '
+                <p>Hi ' . htmlspecialchars($booking['student_name'], ENT_QUOTES, 'UTF-8') . ',</p>
+                <p>Your booking has been successfully cancelled. Here are the details:</p>
+                <table cellpadding="8" cellspacing="0" border="0">
+                    <tr><td><strong>Tutor:</strong></td><td>' . htmlspecialchars($booking['tutor_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td><strong>Subject:</strong></td><td>' . htmlspecialchars($booking['subject_name'], ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td><strong>Date:</strong></td><td>' . htmlspecialchars(date('F j, Y', strtotime($booking['session_date'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
+                    <tr><td><strong>Time:</strong></td><td>' . htmlspecialchars(date('g:i A', strtotime($booking['start_time'])), ENT_QUOTES, 'UTF-8') . ' – ' . htmlspecialchars(date('g:i A', strtotime($booking['end_time'])), ENT_QUOTES, 'UTF-8') . '</td></tr>
+                </table>
+                <p>You can book a new session any time from <a href="' . SITE_URL . '/tutors/index.php">Find a Tutor</a>.</p>
+                <p>– The AralPal Team</p>
+            ';
+            send_mail($student_row['email'], 'Your AralPal booking has been cancelled', $student_cancel_body);
+        }
+
         // In-app notification for tutor
         $notif_msg = htmlspecialchars(
             $booking['student_name'] . ' cancelled their booking for '
@@ -136,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = 'Cancel Booking';
 $csrf_token = generate_csrf();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container booking-container">
@@ -177,7 +197,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <p class="cancel-card__warning">
-            This action cannot be undone. The tutor will be notified of the cancellation.
+            This action cannot be undone. The tutor will be notified and you will receive a confirmation email.
         </p>
 
         <form method="post" action="/AralPal/booking/cancel.php?id=<?= (int) $booking_id ?>">
@@ -197,4 +217,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

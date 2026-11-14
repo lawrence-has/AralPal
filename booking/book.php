@@ -201,24 +201,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert booking
         if (empty($errors)) {
-            $insert = $db->prepare('
-                INSERT INTO bookings
-                    (student_id, tutor_id, subject_id, session_date, start_time, end_time, status)
-                VALUES
-                    (?, ?, ?, ?, ?, ?, \'pending\')
-            ');
-            $insert->execute([
-                $student_uid,
-                $tutor_id,
-                $post_subject_id,
-                $post_session_date,
-                $post_start_time,
-                $end_time,
-            ]);
-            $new_id = (int) $db->lastInsertId();
+            // ── Enforce monthly booking limit ─────────────────────────────
+            $limit = get_student_booking_limit($student_uid);
+            if ($limit !== BOOKING_LIMIT_UNLIMITED) {
+                $used = count_student_bookings_this_month($student_uid);
+                if ($used >= $limit) {
+                    $errors[] = 'You have reached your monthly booking limit ('
+                        . $limit . ' booking' . ($limit === 1 ? '' : 's')
+                        . '). Upgrade your plan to book more sessions this month.';
+                }
+            }
+        }
 
-            header('Location: /AralPal/booking/confirm.php?booking_id=' . $new_id);
-            exit;
+        // Insert booking — only if all checks (including limit) passed.
+        // Uses a transaction with SELECT FOR UPDATE to close the race window
+        // between the conflict check and the INSERT. The lock prevents a
+        // concurrent request from inserting the same active slot between
+        // the moment this request verifies the slot is free and the moment
+        // it claims it. Cancelled/declined rows are excluded from the lock
+        // scope so those slots remain freely rebookable.
+        if (empty($errors)) {
+            try {
+                $db->beginTransaction();
+
+                // Re-check for conflicts inside the transaction with a row lock.
+                // Any concurrent INSERT that would create an overlapping active
+                // booking on this tutor/date will block until this transaction
+                // commits or rolls back.
+                $lock_stmt = $db->prepare('
+                    SELECT COUNT(*) FROM bookings
+                    WHERE tutor_id    = ?
+                      AND session_date = ?
+                      AND status NOT IN (\'cancelled\', \'declined\')
+                      AND start_time  < ?
+                      AND end_time    > ?
+                    FOR UPDATE
+                ');
+                $lock_stmt->execute([
+                    $tutor_id,
+                    $post_session_date,
+                    $end_time,
+                    $post_start_time,
+                ]);
+
+                if ((int) $lock_stmt->fetchColumn() > 0) {
+                    $db->rollBack();
+                    $errors[] = 'That time slot was just taken by another student. Please choose a different time.';
+                } else {
+                    $insert = $db->prepare('
+                        INSERT INTO bookings
+                            (student_id, tutor_id, subject_id, session_date, start_time, end_time, status)
+                        VALUES
+                            (?, ?, ?, ?, ?, ?, \'pending\')
+                    ');
+                    $insert->execute([
+                        $student_uid,
+                        $tutor_id,
+                        $post_subject_id,
+                        $post_session_date,
+                        $post_start_time,
+                        $end_time,
+                    ]);
+                    $new_id = (int) $db->lastInsertId();
+                    $db->commit();
+
+                    header('Location: /AralPal/booking/confirm.php?booking_id=' . $new_id);
+                    exit;
+                }
+            } catch (PDOException $ex) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                error_log('AralPal booking INSERT error: ' . $ex->getMessage());
+                $errors[] = 'A database error occurred. Please try again.';
+            }
         }
     }
 }
@@ -231,7 +287,7 @@ $avatar      = htmlspecialchars(
     ENT_QUOTES, 'UTF-8'
 );
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container booking-container">
@@ -270,6 +326,25 @@ require_once __DIR__ . '/../includes/header.php';
     <form class="booking-form card" method="post" action="/AralPal/booking/book.php?tutor_id=<?= (int) $tutor_id ?>">
         <input type="hidden" name="csrf_token"  value="<?= e($csrf_token) ?>">
         <input type="hidden" name="tutor_id"    value="<?= (int) $tutor_id ?>">
+
+        <?php
+        // Show the student their remaining bookings for this month
+        $booking_limit = get_student_booking_limit($student_uid);
+        $bookings_used = count_student_bookings_this_month($student_uid);
+        if ($booking_limit === BOOKING_LIMIT_UNLIMITED): ?>
+            <p class="booking-limit-notice booking-limit-notice--ok">
+                ✅ Unlimited bookings on your current plan.
+            </p>
+        <?php else:
+            $remaining = max(0, $booking_limit - $bookings_used);
+        ?>
+            <p class="booking-limit-notice <?= $remaining === 0 ? 'booking-limit-notice--warn' : 'booking-limit-notice--ok' ?>">
+                📅 <?= $remaining ?> of <?= $booking_limit ?> booking<?= $booking_limit === 1 ? '' : 's' ?> remaining this month.
+                <?php if ($remaining === 0): ?>
+                    <a href="/AralPal/subscriptions/plans.php">Upgrade your plan →</a>
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
 
         <!-- Subject -->
         <div class="form-group">
@@ -465,4 +540,4 @@ require_once __DIR__ . '/../includes/header.php';
 })();
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

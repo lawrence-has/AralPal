@@ -22,7 +22,7 @@ $tutor = $tutor_stmt->fetch();
 if (!$tutor) {
     // User has Tutor role but no tutors row yet — surface a helpful message.
     $page_title = 'Tutor Dashboard';
-    require_once __DIR__ . '/../includes/header.php';
+    require_once __DIR__ . '/../includes/app-header.php';
     echo '<main class="dashboard-main container"><div class="alert alert-warning">Your tutor profile is not set up yet. Please <a href="/AralPal/tutors/edit-profile.php">complete your profile</a>.</div></main>';
     require_once __DIR__ . '/../includes/footer.php';
     exit;
@@ -100,7 +100,7 @@ $notifications = $notif_stmt->fetchAll();
 $page_title = 'Tutor Dashboard';
 $csrf_token = generate_csrf();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="dashboard-main container">
@@ -532,4 +532,4 @@ require_once __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

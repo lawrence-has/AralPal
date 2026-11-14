@@ -4,13 +4,37 @@
  *
  * Shows a side-by-side comparison table of up to 3 tutors.
  * Accepts ?ids=1,2,3 (comma-separated tutor IDs).
+ * Requires login and a Premium Student subscription.
  */
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
+require_login();
+
 $page_title = 'Compare Tutors';
+
+// ── Premium plan gate ──────────────────────────────────────────────────────
+// Compare tutors is a Premium Student feature per subscription_plans.features.
+// Tutors and Admins pass through — restriction applies to Students only.
+$_gate_user = current_user();
+$_gate_uid  = (int) ($_gate_user['id'] ?? 0);
+$_gate_role = (string) ($_gate_user['role_name'] ?? '');
+
+if (!student_has_premium($_gate_uid, $_gate_role)) {
+    http_response_code(403);
+    require_once __DIR__ . '/../includes/app-header.php';
+    echo '<main class="container"><div class="alert alert--warning" style="margin:2rem 0;padding:1.5rem;border-radius:8px;background:#fef9c3;border:1px solid #fde68a;color:#92400e;">'
+       . '<h2 style="margin:0 0 .5rem">🔒 Premium Feature</h2>'
+       . '<p><strong>Compare Tutors</strong> is available on the <strong>Premium Student</strong> plan.</p>'
+       . '<p style="margin-top:.75rem"><a class="btn btn-primary" href="/AralPal/subscriptions/plans.php">Upgrade to Premium →</a>'
+       . ' &nbsp; <a href="/AralPal/tutors/index.php">Back to Find a Tutor</a></p>'
+       . '</div></main>';
+    require_once __DIR__ . '/../includes/app-footer.php';
+    exit;
+}
 
 // ── Parse and validate IDs ────────────────────────────────────────────────
 $raw_ids = trim($_GET['ids'] ?? '');
@@ -28,9 +52,9 @@ $tutor_ids = array_slice(array_unique($tutor_ids), 0, 3);
 
 if (count($tutor_ids) < 2) {
     http_response_code(400);
-    require_once __DIR__ . '/../includes/header.php';
+    require_once __DIR__ . '/../includes/app-header.php';
     echo '<main class="container"><p class="muted">Please select at least 2 tutors to compare. <a href="/AralPal/tutors/index.php">Back to tutors</a></p></main>';
-    require_once __DIR__ . '/../includes/footer.php';
+    require_once __DIR__ . '/../includes/app-footer.php';
     exit;
 }
 
@@ -72,13 +96,13 @@ foreach ($tutor_ids as $tid) {
 
 if (count($tutors) < 2) {
     http_response_code(404);
-    require_once __DIR__ . '/../includes/header.php';
+    require_once __DIR__ . '/../includes/app-header.php';
     echo '<main class="container"><p class="muted">One or more tutors could not be found. <a href="/AralPal/tutors/index.php">Back to tutors</a></p></main>';
-    require_once __DIR__ . '/../includes/footer.php';
+    require_once __DIR__ . '/../includes/app-footer.php';
     exit;
 }
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -226,4 +250,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

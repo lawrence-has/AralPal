@@ -37,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    // Role guard — only Tutor accounts may change booking status
+    if (($current['role_name'] ?? '') !== 'Tutor') {
+        echo json_encode(['success' => false, 'error' => 'Not authorised.']);
+        exit;
+    }
+
     if (!in_array($action, ['accept', 'decline', 'complete'], true)) {
         echo json_encode(['success' => false, 'error' => 'Unknown action.']);
         exit;
@@ -93,8 +99,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         'complete' => 'completed',
     };
 
-    $upd = $db->prepare('UPDATE bookings SET status = ? WHERE id = ?');
-    $upd->execute([$new_status, $bk_id]);
+    // On accept: wrap availability re-check, conflict check, and UPDATE in a
+    // transaction with SELECT FOR UPDATE so concurrent accept attempts on the
+    // same booking (or on two bookings for the same slot) are serialised.
+    if ($action === 'accept') {
+        try {
+            $db->beginTransaction();
+
+            // Re-fetch booking inside transaction with a row lock
+            $lock_bk = $db->prepare('
+                SELECT id, status, session_date, start_time, end_time
+                FROM bookings
+                WHERE id = ? AND tutor_id = ?
+                FOR UPDATE
+            ');
+            $lock_bk->execute([$bk_id, $tutor_id]);
+            $fresh_bk = $lock_bk->fetch();
+
+            if (!$fresh_bk || $fresh_bk['status'] !== 'pending') {
+                $db->rollBack();
+                echo json_encode(['success' => false, 'error' => 'Action not allowed for current status.']);
+                exit;
+            }
+
+            // Re-validate availability window (tutor may have changed schedule)
+            $avail_check = $db->prepare('
+                SELECT COUNT(*) FROM availability
+                WHERE tutor_id   = ?
+                  AND day_of_week = DAYNAME(?)
+                  AND start_time <= ?
+                  AND end_time   >= ?
+            ');
+            $session_end = date('H:i:s', strtotime($fresh_bk['start_time']) + 3600);
+            $avail_check->execute([
+                $tutor_id,
+                $fresh_bk['session_date'],
+                $fresh_bk['start_time'],
+                $session_end,
+            ]);
+            if ((int) $avail_check->fetchColumn() === 0) {
+                $db->rollBack();
+                echo json_encode(['success' => false, 'error' => 'Your availability for this time slot has changed. Update your availability before accepting.']);
+                exit;
+            }
+
+            // Lock any active booking rows for the same tutor/date/time range
+            // to prevent accepting a slot already held by another booking.
+            $conflict = $db->prepare('
+                SELECT COUNT(*) FROM bookings
+                WHERE tutor_id    = ?
+                  AND session_date = ?
+                  AND status       = \'accepted\'
+                  AND id           != ?
+                  AND start_time   < ?
+                  AND end_time     > ?
+                FOR UPDATE
+            ');
+            $conflict->execute([
+                $tutor_id,
+                $fresh_bk['session_date'],
+                $bk_id,
+                $session_end,
+                $fresh_bk['start_time'],
+            ]);
+            if ((int) $conflict->fetchColumn() > 0) {
+                $db->rollBack();
+                echo json_encode(['success' => false, 'error' => 'This time slot is already accepted for another booking. Please decline this one.']);
+                exit;
+            }
+
+            // Enforce Tutor Starter concurrent-booking limit (5 active at once).
+            // Tutor Pro has booking_limit = 0 (unlimited) so this check passes.
+            $tutor_limit = get_tutor_booking_limit($user_id);
+            if ($tutor_limit !== BOOKING_LIMIT_UNLIMITED) {
+                $active_count = count_tutor_active_bookings($tutor_id);
+                if ($active_count >= $tutor_limit) {
+                    $db->rollBack();
+                    echo json_encode([
+                        'success' => false,
+                        'error'   => 'You have reached your plan\'s limit of ' . $tutor_limit
+                                     . ' active booking' . ($tutor_limit === 1 ? '' : 's')
+                                     . '. Upgrade to Tutor Pro for unlimited bookings.',
+                    ]);
+                    exit;
+                }
+            }
+
+            $db->prepare('UPDATE bookings SET status = \'accepted\' WHERE id = ?')
+               ->execute([$bk_id]);
+            $db->commit();
+
+        } catch (PDOException $ex) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('AralPal booking accept error: ' . $ex->getMessage());
+            echo json_encode(['success' => false, 'error' => 'A database error occurred. Please try again.']);
+            exit;
+        }
+
+        // $new_status is already 'accepted' — fall through to notifications below
+    } else {
+        // decline / complete — simple update, no slot conflict possible
+        $db->prepare('UPDATE bookings SET status = ? WHERE id = ?')
+           ->execute([$new_status, $bk_id]);
+    }
 
     // Notification & email for student
     $date_str    = date('F j, Y', strtotime($bk['session_date']));
@@ -243,7 +350,7 @@ $status_labels = [
 
 $is_tutor = ($role === 'Tutor' || $role === 'tutor');
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container booking-container">
@@ -396,8 +503,8 @@ function render_booking_row(array $bk, array $status_labels, bool $is_tutor, str
 
     $html .= '  <div class="booking-card__actions">';
 
-    // Student: cancel button for pending
-    if (!$is_tutor && $bk['status'] === 'pending') {
+    // Student: cancel button for pending or accepted bookings
+    if (!$is_tutor && in_array($bk['status'], ['pending', 'accepted'], true)) {
         $html .= '    <a href="/AralPal/booking/cancel.php?id=' . $bk_id . '" class="btn btn-sm btn-outline-danger">Cancel</a>';
     }
 
@@ -523,4 +630,4 @@ function render_booking_row(array $bk, array $status_labels, bool $is_tutor, str
 })();
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

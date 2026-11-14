@@ -61,27 +61,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Plan mismatch. Please try again.';
     } else {
         // Create PayMongo payment link
+        // Insert a pending payment row first so we can embed payment_id in
+        // the signed success_url token — no reliance on session for recovery.
+        $ins_pending = $db->prepare(
+            "INSERT INTO payments
+                (user_id, plan_id, amount, status, created_at)
+             VALUES
+                (?, ?, ?, 'pending', NOW())"
+        );
+        $ins_pending->execute([$user_id, $plan_id, $price]);
+        $payment_id = (int) $db->lastInsertId();
+
         $response = create_payment_link(
             $price,
             'AralPal - ' . $plan['plan_name'],
-            ['user_id' => $user_id, 'plan_id' => $plan_id]
+            ['user_id' => $user_id, 'plan_id' => $plan_id, 'payment_id' => $payment_id]
         );
 
         if ($response && isset($response['data']['attributes']['checkout_url'])) {
             $checkout_url  = $response['data']['attributes']['checkout_url'];
             $reference_no  = $response['data']['id'];
 
-            // INSERT pending payment record
-            $ins = $db->prepare(
-                "INSERT INTO payments
-                    (user_id, plan_id, amount, status, reference_no, created_at)
-                 VALUES
-                    (?, ?, ?, 'pending', ?, NOW())"
-            );
-            $ins->execute([$user_id, $plan_id, $price, $reference_no]);
-            $payment_id = (int) $db->lastInsertId();
+            // Store the PayMongo link ID as reference_no on the payment row
+            $db->prepare("UPDATE payments SET reference_no = ? WHERE id = ?")
+               ->execute([$reference_no, $payment_id]);
 
-            // Store in session for success.php retrieval
+            // Keep session as a fallback reference (belt-and-suspenders)
             $_SESSION['pending_payment'] = [
                 'payment_id'   => $payment_id,
                 'plan_id'      => $plan_id,
@@ -92,6 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . $checkout_url);
             exit;
         } else {
+            // Link creation failed — clean up the orphaned pending row
+            $db->prepare("DELETE FROM payments WHERE id = ? AND status = 'pending'")
+               ->execute([$payment_id]);
             $error = 'Payment gateway error. Please try again later.';
             error_log('AralPal checkout: PayMongo response: ' . json_encode($response));
         }
@@ -99,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ── GET / error fallthrough: render page ─────────────────────────────────────
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -147,4 +155,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

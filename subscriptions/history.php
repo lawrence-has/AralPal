@@ -24,19 +24,19 @@ $stmt = $db->prepare(
         p.amount,
         p.status,
         p.reference_no,
-        p.payment_method,
+        p.method          AS payment_method,
         p.paid_at,
         p.created_at,
         sp.plan_name
      FROM payments p
-     JOIN subscription_plans sp ON sp.id = p.plan_id
+     LEFT JOIN subscription_plans sp ON sp.id = p.plan_id
      WHERE p.user_id = ?
      ORDER BY p.paid_at DESC, p.created_at DESC"
 );
 $stmt->execute([$user_id]);
 $payments = $stmt->fetchAll();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
 <main class="container">
@@ -79,7 +79,7 @@ require_once __DIR__ . '/../includes/header.php';
                         ?>
                         <tr>
                             <td><?= htmlspecialchars($date_str, ENT_QUOTES, 'UTF-8') ?></td>
-                            <td><?= htmlspecialchars($row['plan_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= htmlspecialchars($row['plan_name'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                             <td>₱<?= htmlspecialchars(number_format((float) $row['amount'], 2), ENT_QUOTES, 'UTF-8') ?></td>
                             <td><?= htmlspecialchars($row['payment_method'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
@@ -105,4 +105,4 @@ require_once __DIR__ . '/../includes/header.php';
 
 </main>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>
