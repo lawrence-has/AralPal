@@ -1,6 +1,6 @@
 <?php
 /**
- * AralPal – Student Dashboard (Enhanced)
+ * AralPal – Student Dashboard
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -106,190 +106,216 @@ $unread_count   = count($notifications);
 
 // ── Status badge mapping ──────────────────────────────────────────────────
 $status_badges = [
-    'pending'   => ['label' => 'Pending',   'class' => 'badge-warning'],
-    'accepted'  => ['label' => 'Confirmed', 'class' => 'badge-success'],
-    'declined'  => ['label' => 'Declined',  'class' => 'badge-danger'],
-    'completed' => ['label' => 'Done',      'class' => 'badge-info'],
-    'cancelled' => ['label' => 'Cancelled', 'class' => 'badge-secondary'],
+    'pending'   => ['label' => 'Pending',   'class' => 'warning'],
+    'accepted'  => ['label' => 'Confirmed', 'class' => 'success'],
+    'declined'  => ['label' => 'Declined',  'class' => 'danger'],
+    'completed' => ['label' => 'Done',      'class' => 'info'],
+    'cancelled' => ['label' => 'Cancelled', 'class' => 'secondary'],
 ];
 
 $page_title = 'Student Dashboard';
 require_once __DIR__ . '/../includes/app-header.php';
 ?>
 
-<main class="dash">
+<div class="sd-wrap">
 
-    <!-- ── Top Banner ──────────────────────────────────────────────────── -->
-    <div class="dash-banner">
-        <div class="dash-banner__left">
-            <p class="dash-banner__eyebrow">Student Dashboard</p>
-            <h1 class="dash-banner__name">Hello, <?= htmlspecialchars(explode(' ', $current['full_name'])[0], ENT_QUOTES, 'UTF-8') ?>! 👋</h1>
-            <p class="dash-banner__sub">Here's your learning summary for today.</p>
+    <!-- ── Welcome Banner ─────────────────────────────────────────────── -->
+    <div class="sd-banner">
+        <div class="sd-banner__left">
+            <p class="sd-banner__eyebrow">Student Dashboard</p>
+            <h1 class="sd-banner__name">
+                Hello, <?= htmlspecialchars(explode(' ', $current['full_name'])[0], ENT_QUOTES, 'UTF-8') ?>! 👋
+            </h1>
+            <p class="sd-banner__sub">Here's your learning summary for today.</p>
         </div>
-        <div class="dash-banner__right">
+        <div class="sd-banner__right">
             <?php if ($is_pro): ?>
-                <div class="plan-chip plan-chip--pro">
-                    <i class="fa-solid fa-crown"></i>
+                <div class="sd-plan-chip sd-plan-chip--pro">
+                    <i class="fa-solid fa-crown" aria-hidden="true"></i>
                     <?= htmlspecialchars($subscription['plan_name'], ENT_QUOTES, 'UTF-8') ?>
                 </div>
-                <p class="plan-chip__expiry">Expires <?= date('M j, Y', strtotime($subscription['end_date'])) ?></p>
+                <p class="sd-plan-expiry">
+                    Expires <?= htmlspecialchars(date('M j, Y', strtotime($subscription['end_date'])), ENT_QUOTES, 'UTF-8') ?>
+                </p>
             <?php else: ?>
-                <div class="plan-chip plan-chip--free">
-                    <i class="fa-solid fa-user"></i> Free Plan
+                <div class="sd-plan-chip sd-plan-chip--free">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i> Free Plan
                 </div>
-                <a class="dash-upgrade-btn" href="/AralPal/subscriptions/plans.php">
-                    <i class="fa-solid fa-arrow-up"></i> Upgrade
+                <a class="sd-upgrade-btn" href="/AralPal/subscriptions/plans.php">
+                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Upgrade
                 </a>
             <?php endif; ?>
         </div>
     </div>
 
-    <!-- ── Stat Cards ──────────────────────────────────────────────────── -->
-    <div class="dash-stats">
-        <div class="stat-pill">
-            <span class="stat-pill__icon" style="background:#e0f2fe;color:#0369a1"><i class="fa-solid fa-calendar-check"></i></span>
+    <!-- ── Stat Cards ─────────────────────────────────────────────────── -->
+    <div class="sd-stats" role="list" aria-label="Dashboard statistics">
+        <div class="sd-stat" role="listitem">
+            <span class="sd-stat__icon" style="background:#e0f2fe;color:#0369a1" aria-hidden="true">
+                <i class="fa-solid fa-calendar-check"></i>
+            </span>
             <div>
-                <p class="stat-pill__val"><?= (int)($booking_stats['total_bookings'] ?? 0) ?></p>
-                <p class="stat-pill__lbl">Total Bookings</p>
+                <p class="sd-stat__val"><?= (int)($booking_stats['total_bookings'] ?? 0) ?></p>
+                <p class="sd-stat__lbl">Total Bookings</p>
             </div>
         </div>
-        <div class="stat-pill">
-            <span class="stat-pill__icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></span>
+        <div class="sd-stat" role="listitem">
+            <span class="sd-stat__icon" style="background:#dcfce7;color:#15803d" aria-hidden="true">
+                <i class="fa-solid fa-circle-check"></i>
+            </span>
             <div>
-                <p class="stat-pill__val"><?= (int)($booking_stats['completed'] ?? 0) ?></p>
-                <p class="stat-pill__lbl">Completed</p>
+                <p class="sd-stat__val"><?= (int)($booking_stats['completed'] ?? 0) ?></p>
+                <p class="sd-stat__lbl">Completed</p>
             </div>
         </div>
-        <div class="stat-pill">
-            <span class="stat-pill__icon" style="background:#fef9c3;color:#a16207"><i class="fa-solid fa-book-open"></i></span>
+        <div class="sd-stat" role="listitem">
+            <span class="sd-stat__icon" style="background:#fff7ed;color:#c2410c" aria-hidden="true">
+                <i class="fa-solid fa-calendar-day"></i>
+            </span>
             <div>
-                <p class="stat-pill__val"><?= $completed_lessons ?>/<?= $total_lessons ?></p>
-                <p class="stat-pill__lbl">Lessons Done</p>
+                <p class="sd-stat__val"><?= (int)($booking_stats['this_month'] ?? 0) ?></p>
+                <p class="sd-stat__lbl">This Month</p>
             </div>
         </div>
-        <div class="stat-pill">
-            <span class="stat-pill__icon" style="background:#fce7f3;color:#9d174d"><i class="fa-solid fa-pen-to-square"></i></span>
+        <div class="sd-stat" role="listitem">
+            <span class="sd-stat__icon" style="background:#fef9c3;color:#a16207" aria-hidden="true">
+                <i class="fa-solid fa-book-open"></i>
+            </span>
             <div>
-                <p class="stat-pill__val"><?= count($quiz_attempts) ?></p>
-                <p class="stat-pill__lbl">Quiz Attempts</p>
+                <p class="sd-stat__val"><?= $completed_lessons ?>/<?= $total_lessons ?></p>
+                <p class="sd-stat__lbl">Lessons Done</p>
             </div>
         </div>
-        <div class="stat-pill">
-            <span class="stat-pill__icon" style="background:#ede9fe;color:#6d28d9"><i class="fa-solid fa-bell"></i></span>
+        <div class="sd-stat" role="listitem">
+            <span class="sd-stat__icon" style="background:#ede9fe;color:#6d28d9" aria-hidden="true">
+                <i class="fa-solid fa-bell"></i>
+            </span>
             <div>
-                <p class="stat-pill__val"><?= $unread_count ?></p>
-                <p class="stat-pill__lbl">Notifications</p>
+                <p class="sd-stat__val"><?= $unread_count ?></p>
+                <p class="sd-stat__lbl">Notifications Unread</p>
             </div>
         </div>
     </div>
 
-    <!-- ── Main Grid ───────────────────────────────────────────────────── -->
-    <div class="dash-grid">
+    <!-- ── Main Grid ──────────────────────────────────────────────────── -->
+    <div class="sd-grid">
 
-        <!-- Upcoming Bookings -->
-        <section class="dwidget dwidget--wide" aria-labelledby="dw-bookings">
-            <div class="dwidget__head">
-                <h2 id="dw-bookings"><i class="fa-regular fa-calendar-days"></i> Upcoming Sessions</h2>
-                <a class="dwidget__more" href="/AralPal/booking/my-bookings.php">View all →</a>
+        <!-- Left wide column: Upcoming Sessions -->
+        <section class="sd-widget sd-widget--wide" aria-labelledby="sdw-bookings">
+            <div class="sd-widget__head">
+                <h2 id="sdw-bookings">
+                    <i class="fa-regular fa-calendar-days" aria-hidden="true"></i> Upcoming Sessions
+                </h2>
+                <a class="sd-widget__more" href="/AralPal/booking/my-bookings.php">View all →</a>
             </div>
             <?php if (empty($upcoming_bookings)): ?>
-                <div class="dwidget__empty">
-                    <i class="fa-regular fa-calendar-xmark fa-2x"></i>
+                <div class="sd-empty">
+                    <i class="fa-regular fa-calendar-xmark fa-2x" aria-hidden="true"></i>
                     <p>No upcoming sessions. <a href="/AralPal/tutors/index.php">Find a tutor</a> to book one.</p>
                 </div>
             <?php else: ?>
-                <ul class="session-list">
+                <ul class="sd-session-list">
                     <?php foreach ($upcoming_bookings as $bk):
-                        $si   = $status_badges[$bk['status']] ?? ['label' => $bk['status'], 'class' => 'badge-secondary'];
-                        $date = date('D, M j', strtotime($bk['session_date']));
-                        $time = date('g:i A', strtotime($bk['start_time'])) . ' – ' . date('g:i A', strtotime($bk['end_time']));
+                        $si   = $status_badges[$bk['status']] ?? ['label' => htmlspecialchars($bk['status'], ENT_QUOTES, 'UTF-8'), 'class' => 'secondary'];
+                        $date = htmlspecialchars(date('D, M j', strtotime($bk['session_date'])), ENT_QUOTES, 'UTF-8');
+                        $time = htmlspecialchars(date('g:i A', strtotime($bk['start_time'])) . ' – ' . date('g:i A', strtotime($bk['end_time'])), ENT_QUOTES, 'UTF-8');
                     ?>
-                        <li class="session-item">
-                            <img class="session-item__avatar"
+                        <li class="sd-session-item">
+                            <img class="sd-session-item__avatar"
                                  src="<?= htmlspecialchars($bk['tutor_avatar'] ?: '/AralPal/assets/avatar-default.png', ENT_QUOTES, 'UTF-8') ?>"
-                                 alt="" loading="lazy" onerror="this.src='/AralPal/assets/avatar-default.png'">
-                            <div class="session-item__info">
+                                 alt="" loading="lazy"
+                                 onerror="this.src='/AralPal/assets/avatar-default.png'">
+                            <div class="sd-session-item__info">
                                 <strong><?= htmlspecialchars($bk['tutor_name'], ENT_QUOTES, 'UTF-8') ?></strong>
                                 <span><?= htmlspecialchars($bk['subject_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="session-item__time">
-                                    <i class="fa-regular fa-clock"></i>
-                                    <?= htmlspecialchars($date . ' · ' . $time, ENT_QUOTES, 'UTF-8') ?>
+                                <span class="sd-session-item__time">
+                                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                    <?= $date ?> · <?= $time ?>
                                 </span>
                             </div>
-                            <span class="dbadge dbadge--<?= $si['class'] ?>"><?= $si['label'] ?></span>
+                            <span class="sd-badge sd-badge--<?= htmlspecialchars($si['class'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($si['label'], ENT_QUOTES, 'UTF-8') ?>
+                            </span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>
         </section>
 
-        <!-- Lesson Progress -->
-        <section class="dwidget" aria-labelledby="dw-progress">
-            <div class="dwidget__head">
-                <h2 id="dw-progress"><i class="fa-solid fa-chart-line"></i> Lesson Progress</h2>
-                <a class="dwidget__more" href="/AralPal/pages/progress.php">Details →</a>
+        <!-- Right column: Lesson Progress -->
+        <section class="sd-widget" aria-labelledby="sdw-progress">
+            <div class="sd-widget__head">
+                <h2 id="sdw-progress">
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i> Lesson Progress
+                </h2>
+                <a class="sd-widget__more" href="/AralPal/pages/progress.php">Details →</a>
             </div>
 
-            <!-- Overall progress ring -->
-            <div class="progress-ring-wrap">
-                <svg class="progress-ring" viewBox="0 0 80 80" aria-hidden="true">
+            <!-- SVG ring chart -->
+            <div class="sd-ring-wrap">
+                <svg class="sd-ring" viewBox="0 0 80 80" aria-label="<?= $overall_pct ?>% overall progress">
                     <circle cx="40" cy="40" r="34" fill="none" stroke="var(--clr-border)" stroke-width="8"/>
                     <circle cx="40" cy="40" r="34" fill="none" stroke="var(--clr-primary)" stroke-width="8"
                             stroke-dasharray="<?= round(213.6 * $overall_pct / 100) ?> 213.6"
                             stroke-dashoffset="53.4" stroke-linecap="round"/>
                 </svg>
-                <div class="progress-ring__label">
-                    <span class="progress-ring__pct"><?= $overall_pct ?>%</span>
-                    <span class="progress-ring__sub">Complete</span>
+                <div class="sd-ring__label" aria-hidden="true">
+                    <span class="sd-ring__pct"><?= $overall_pct ?>%</span>
+                    <span class="sd-ring__sub">Complete</span>
                 </div>
             </div>
 
-            <ul class="lesson-progress-list">
+            <!-- Per-lesson progress bars -->
+            <ul class="sd-lesson-list">
                 <?php foreach ($lesson_slugs as $slug => $meta):
                     $status = $lesson_progress_map[$slug] ?? 'not_started';
                     $pct    = $status === 'completed' ? 100 : ($status === 'in_progress' ? 50 : 0);
-                    $color  = $status === 'completed' ? '#16a34a' : ($status === 'in_progress' ? '#f59e0b' : '#e2e8f0');
-                    $link   = '/AralPal/pages/lesson-' . $slug . '.php';
+                    $bar_color = $status === 'completed' ? '#16a34a' : ($status === 'in_progress' ? '#f59e0b' : '#e2e8f0');
+                    $link   = '/AralPal/pages/lesson-' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . '.php';
                 ?>
-                    <li class="lp-item">
-                        <a href="<?= $link ?>" class="lp-item__icon"><i class="fa <?= $meta['icon'] ?>"></i></a>
-                        <div class="lp-item__info">
-                            <span class="lp-item__title"><?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <div class="lp-track">
-                                <div class="lp-fill" style="width:<?= $pct ?>%;background:<?= $color ?>"></div>
+                    <li class="sd-lp-item">
+                        <a href="<?= $link ?>" class="sd-lp-item__icon" aria-label="<?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="fa <?= htmlspecialchars($meta['icon'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
+                        </a>
+                        <div class="sd-lp-item__info">
+                            <span class="sd-lp-item__title"><?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <div class="sd-lp-track" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="sd-lp-fill" style="width:<?= $pct ?>%;background:<?= $bar_color ?>"></div>
                             </div>
                         </div>
-                        <span class="lp-item__pct" style="color:<?= $color ?>"><?= $pct ?>%</span>
+                        <span class="sd-lp-item__pct" style="color:<?= $bar_color ?>"><?= $pct ?>%</span>
                     </li>
                 <?php endforeach; ?>
             </ul>
         </section>
 
         <!-- Quiz Scores -->
-        <section class="dwidget" aria-labelledby="dw-quiz">
-            <div class="dwidget__head">
-                <h2 id="dw-quiz"><i class="fa-solid fa-trophy"></i> Quiz Scores</h2>
-                <a class="dwidget__more" href="/AralPal/pages/quizzes.php">Take quiz →</a>
+        <section class="sd-widget" aria-labelledby="sdw-quiz">
+            <div class="sd-widget__head">
+                <h2 id="sdw-quiz">
+                    <i class="fa-solid fa-trophy" aria-hidden="true"></i> Quiz Scores
+                </h2>
+                <a class="sd-widget__more" href="/AralPal/pages/quizzes.php">Take quiz →</a>
             </div>
             <?php if (empty($quiz_attempts)): ?>
-                <div class="dwidget__empty">
-                    <i class="fa-solid fa-pen-to-square fa-2x"></i>
+                <div class="sd-empty">
+                    <i class="fa-solid fa-pen-to-square fa-2x" aria-hidden="true"></i>
                     <p>No quiz attempts yet. <a href="/AralPal/pages/quizzes.php">Take a quiz</a>.</p>
                 </div>
             <?php else: ?>
-                <ul class="quiz-score-list">
+                <ul class="sd-quiz-list">
                     <?php foreach ($quiz_attempts as $att):
-                        $pct   = $att['total'] > 0 ? round(($att['score'] / $att['total']) * 100) : 0;
-                        $cls   = $pct >= 75 ? 'good' : ($pct >= 50 ? 'ok' : 'low');
-                        $lbl   = ucwords(str_replace('-', ' ', $att['lesson_slug']));
-                        $when  = date('M j', strtotime($att['created_at']));
+                        $pct  = $att['total'] > 0 ? round(($att['score'] / $att['total']) * 100) : 0;
+                        $cls  = $pct >= 75 ? 'good' : ($pct >= 50 ? 'ok' : 'low');
+                        $lbl  = ucwords(str_replace('-', ' ', $att['lesson_slug']));
+                        $when = htmlspecialchars(date('M j', strtotime($att['created_at'])), ENT_QUOTES, 'UTF-8');
                     ?>
-                        <li class="qs-item">
-                            <div class="qs-item__info">
-                                <span class="qs-item__name"><?= htmlspecialchars($lbl, ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="qs-item__date muted"><?= $when ?></span>
+                        <li class="sd-qs-item">
+                            <div class="sd-qs-item__info">
+                                <span class="sd-qs-item__name"><?= htmlspecialchars($lbl, ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="sd-qs-item__date"><?= $when ?></span>
                             </div>
-                            <div class="qs-score qs-score--<?= $cls ?>">
+                            <div class="sd-qs-score sd-qs-score--<?= $cls ?>">
                                 <?= (int)$att['score'] ?>/<?= (int)$att['total'] ?>
                                 <small><?= $pct ?>%</small>
                             </div>
@@ -299,23 +325,26 @@ require_once __DIR__ . '/../includes/app-header.php';
             <?php endif; ?>
         </section>
 
-        <!-- Favorite Tutors -->
-        <section class="dwidget" aria-labelledby="dw-favs">
-            <div class="dwidget__head">
-                <h2 id="dw-favs"><i class="fa-solid fa-heart"></i> Favourite Tutors</h2>
-                <a class="dwidget__more" href="/AralPal/tutors/index.php">Browse →</a>
+        <!-- Favourite Tutors -->
+        <section class="sd-widget" aria-labelledby="sdw-favs">
+            <div class="sd-widget__head">
+                <h2 id="sdw-favs">
+                    <i class="fa-solid fa-heart" aria-hidden="true"></i> Favourite Tutors
+                </h2>
+                <a class="sd-widget__more" href="/AralPal/tutors/index.php">Browse →</a>
             </div>
             <?php if (empty($favorites)): ?>
-                <div class="dwidget__empty">
-                    <i class="fa-regular fa-heart fa-2x"></i>
+                <div class="sd-empty">
+                    <i class="fa-regular fa-heart fa-2x" aria-hidden="true"></i>
                     <p>No favourites yet. <a href="/AralPal/tutors/index.php">Browse tutors</a>.</p>
                 </div>
             <?php else: ?>
-                <div class="fav-row">
+                <div class="sd-fav-row">
                     <?php foreach ($favorites as $fav): ?>
-                        <a class="fav-chip" href="/AralPal/tutors/profile.php?id=<?= (int)$fav['tutor_id'] ?>">
+                        <a class="sd-fav-chip" href="/AralPal/tutors/profile.php?id=<?= (int)$fav['tutor_id'] ?>">
                             <img src="<?= htmlspecialchars($fav['tutor_avatar'] ?: '/AralPal/assets/avatar-default.png', ENT_QUOTES, 'UTF-8') ?>"
-                                 alt="" onerror="this.src='/AralPal/assets/avatar-default.png'">
+                                 alt="<?= htmlspecialchars(explode(' ', $fav['tutor_name'])[0], ENT_QUOTES, 'UTF-8') ?>"
+                                 onerror="this.src='/AralPal/assets/avatar-default.png'">
                             <span><?= htmlspecialchars(explode(' ', $fav['tutor_name'])[0], ENT_QUOTES, 'UTF-8') ?></span>
                             <small>₱<?= number_format((float)$fav['hourly_rate'], 0) ?>/hr</small>
                         </a>
@@ -324,33 +353,41 @@ require_once __DIR__ . '/../includes/app-header.php';
             <?php endif; ?>
         </section>
 
-        <!-- Notifications -->
-        <section class="dwidget" aria-labelledby="dw-notifs">
-            <div class="dwidget__head">
-                <h2 id="dw-notifs">
-                    <i class="fa-solid fa-bell"></i> Notifications
+        <!-- Notifications Feed (full width) -->
+        <section class="sd-widget sd-widget--full" aria-labelledby="sdw-notifs">
+            <div class="sd-widget__head">
+                <h2 id="sdw-notifs">
+                    <i class="fa-solid fa-bell" aria-hidden="true"></i> Notifications
                     <?php if ($unread_count): ?>
-                        <span class="notif-count"><?= $unread_count ?></span>
+                        <span class="sd-notif-count" aria-label="<?= $unread_count ?> unread">
+                            <?= $unread_count ?>
+                        </span>
                     <?php endif; ?>
                 </h2>
-                <a class="dwidget__more" href="/AralPal/notifications/index.php">All →</a>
+                <a class="sd-widget__more" href="/AralPal/notifications/index.php">All →</a>
             </div>
             <?php if (empty($notifications)): ?>
-                <div class="dwidget__empty">
-                    <i class="fa-regular fa-bell-slash fa-2x"></i>
+                <div class="sd-empty">
+                    <i class="fa-regular fa-bell-slash fa-2x" aria-hidden="true"></i>
                     <p>No unread notifications.</p>
                 </div>
             <?php else: ?>
-                <ul class="notif-feed">
+                <ul class="sd-notif-feed">
                     <?php foreach ($notifications as $n):
                         $diff = time() - strtotime($n['created_at']);
-                        $ago  = $diff < 60 ? 'Just now' : ($diff < 3600 ? floor($diff/60).'m ago' : ($diff < 86400 ? floor($diff/3600).'h ago' : date('M j', strtotime($n['created_at']))));
+                        $ago  = $diff < 60
+                            ? 'Just now'
+                            : ($diff < 3600
+                                ? floor($diff / 60) . 'm ago'
+                                : ($diff < 86400
+                                    ? floor($diff / 3600) . 'h ago'
+                                    : htmlspecialchars(date('M j', strtotime($n['created_at'])), ENT_QUOTES, 'UTF-8')));
                     ?>
-                        <li class="notif-feed__item">
-                            <span class="notif-dot"></span>
+                        <li class="sd-notif-item">
+                            <span class="sd-notif-dot" aria-hidden="true"></span>
                             <div>
                                 <p><?= htmlspecialchars($n['message'], ENT_QUOTES, 'UTF-8') ?></p>
-                                <time class="muted"><?= $ago ?></time>
+                                <time><?= $ago ?></time>
                             </div>
                         </li>
                     <?php endforeach; ?>
@@ -358,141 +395,617 @@ require_once __DIR__ . '/../includes/app-header.php';
             <?php endif; ?>
         </section>
 
-    </div><!-- /.dash-grid -->
+    </div><!-- /.sd-grid -->
 
-    <!-- ── Quick Actions ───────────────────────────────────────────────── -->
-    <div class="dash-actions">
-        <a class="dash-action-btn" href="/AralPal/tutors/index.php">
-            <i class="fa-solid fa-magnifying-glass"></i> Find a Tutor
+    <!-- ── Quick Actions ──────────────────────────────────────────────── -->
+    <nav class="sd-actions" aria-label="Quick actions">
+        <a class="sd-action-btn" href="/AralPal/tutors/index.php">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Find a Tutor
         </a>
-        <a class="dash-action-btn" href="/AralPal/booking/my-bookings.php">
-            <i class="fa-solid fa-calendar-days"></i> My Bookings
+        <a class="sd-action-btn" href="/AralPal/booking/my-bookings.php">
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i> My Bookings
         </a>
-        <a class="dash-action-btn" href="/AralPal/pages/quizzes.php">
-            <i class="fa-solid fa-pen-to-square"></i> Take a Quiz
+        <a class="sd-action-btn" href="/AralPal/pages/quizzes.php">
+            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Take a Quiz
         </a>
-        <a class="dash-action-btn" href="/AralPal/pages/progress.php">
-            <i class="fa-solid fa-chart-line"></i> My Progress
+        <a class="sd-action-btn" href="/AralPal/pages/progress.php">
+            <i class="fa-solid fa-chart-line" aria-hidden="true"></i> My Progress
         </a>
-        <a class="dash-action-btn" href="/AralPal/subscriptions/plans.php">
-            <i class="fa-solid fa-crown"></i> Plans
+        <a class="sd-action-btn" href="/AralPal/subscriptions/plans.php">
+            <i class="fa-solid fa-crown" aria-hidden="true"></i> Plans
         </a>
-    </div>
+    </nav>
 
-</main>
+</div><!-- /.sd-wrap -->
 
 <style>
-/* ── Student Dashboard ─────────────────────────────────────────────────── */
-.dash { max-width: 1200px; margin: 0 auto; padding: 2rem clamp(1rem,4vw,2.5rem); }
+/* ══════════════════════════════════════════════════════════════════════════
+   Student Dashboard  — all rules scoped to .sd-* prefix
+   Uses only CSS variables from the app design system.
+   Safe hex values used only for stat-icon backgrounds/colours and
+   colour-coded quiz score badges (accessibility contrast confirmed).
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* Banner */
-.dash-banner {
-    display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 1.25rem;
-    background: linear-gradient(135deg, var(--clr-primary) 0%, #1a56db 100%);
-    color: #fff; border-radius: var(--radius-lg);
-    padding: 2rem 2.5rem; margin-bottom: 2rem;
+/* Wrapper */
+.sd-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem clamp(1rem, 4vw, 2.5rem);
 }
-.dash-banner__eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .75; margin-bottom: .25rem; }
-.dash-banner__name    { font-size: 1.75rem; font-weight: 800; margin-bottom: .25rem; }
-.dash-banner__sub     { opacity: .8; font-size: .95rem; }
-.dash-banner__right   { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; }
-.plan-chip            { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem 1rem; border-radius: 99px; font-size: .82rem; font-weight: 700; }
-.plan-chip--pro       { background: #fef9c3; color: #854d0e; }
-.plan-chip--free      { background: rgba(255,255,255,.2); color: #fff; }
-.plan-chip__expiry    { font-size: .78rem; opacity: .75; color: #fff; text-align: right; }
-.dash-upgrade-btn     { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .9rem; background: rgba(255,255,255,.2); color: #fff; border-radius: 99px; font-size: .82rem; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,.3); transition: background .2s; }
-.dash-upgrade-btn:hover { background: rgba(255,255,255,.35); }
 
-/* Stat pills */
-.dash-stats { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
-.stat-pill  { display: flex; align-items: center; gap: .9rem; background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 1rem 1.4rem; flex: 1 1 160px; box-shadow: var(--shadow-sm); }
-.stat-pill__icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; font-size: 1.1rem; flex-shrink: 0; }
-.stat-pill__val  { font-size: 1.4rem; font-weight: 800; line-height: 1; color: var(--clr-text); }
-.stat-pill__lbl  { font-size: .75rem; color: var(--clr-muted); margin-top: .15rem; }
+/* ── Welcome Banner ────────────────────────────────────────────────────── */
+.sd-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    background: var(--clr-primary);
+    color: #fff;
+    border-radius: var(--radius-md);
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+}
 
-/* Main grid */
-.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
-@media (max-width: 860px) { .dash-grid { grid-template-columns: 1fr; } }
+.sd-banner__eyebrow {
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    opacity: .75;
+    margin-bottom: .25rem;
+}
 
-/* Widgets */
-.dwidget { background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); }
-.dwidget--wide { grid-column: 1 / -1; }
-.dwidget__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-.dwidget__head h2 { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
-.dwidget__more { font-size: .82rem; color: var(--clr-primary); text-decoration: none; white-space: nowrap; }
-.dwidget__more:hover { text-decoration: underline; }
-.dwidget__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem 1rem; color: var(--clr-muted); text-align: center; }
-.dwidget__empty i { opacity: .4; }
+.sd-banner__name {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 .25rem;
+    color: #fff;
+}
 
-/* Session list */
-.session-list { list-style: none; display: flex; flex-direction: column; gap: .75rem; }
-.session-item { display: flex; align-items: center; gap: 1rem; padding: .9rem 1rem; background: var(--clr-bg); border-radius: var(--radius-sm); border: 1px solid var(--clr-border); }
-.session-item__avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--clr-primary-light); flex-shrink: 0; }
-.session-item__info { flex: 1; display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
-.session-item__info strong { font-size: .95rem; }
-.session-item__info span  { font-size: .82rem; color: var(--clr-muted); }
-.session-item__time { display: flex; align-items: center; gap: .3rem; color: var(--clr-muted) !important; }
+.sd-banner__sub {
+    opacity: .8;
+    font-size: .95rem;
+    margin: 0;
+}
 
-/* Progress ring */
-.progress-ring-wrap { display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; position: relative; }
-.progress-ring { width: 100px; height: 100px; transform: rotate(-90deg); }
-.progress-ring__label { position: absolute; display: flex; flex-direction: column; align-items: center; }
-.progress-ring__pct  { font-size: 1.3rem; font-weight: 800; color: var(--clr-primary); }
-.progress-ring__sub  { font-size: .65rem; color: var(--clr-muted); text-transform: uppercase; letter-spacing: .05em; }
+.sd-banner__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .5rem;
+}
 
-/* Lesson progress list */
-.lesson-progress-list { list-style: none; display: flex; flex-direction: column; gap: .9rem; }
-.lp-item { display: flex; align-items: center; gap: .75rem; }
-.lp-item__icon { width: 32px; height: 32px; display: grid; place-items: center; background: var(--clr-primary-light); color: var(--clr-primary); border-radius: 8px; font-size: .95rem; text-decoration: none; flex-shrink: 0; }
-.lp-item__info { flex: 1; min-width: 0; }
-.lp-item__title { font-size: .85rem; font-weight: 500; display: block; margin-bottom: .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lp-track { height: 7px; background: var(--clr-border); border-radius: 99px; overflow: hidden; }
-.lp-fill  { height: 100%; border-radius: 99px; transition: width .4s ease; }
-.lp-item__pct { font-size: .78rem; font-weight: 700; min-width: 32px; text-align: right; }
+/* Plan chip */
+.sd-plan-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem 1rem;
+    border-radius: 99px;
+    font-size: .82rem;
+    font-weight: 700;
+}
 
-/* Quiz scores */
-.quiz-score-list { list-style: none; display: flex; flex-direction: column; gap: .65rem; }
-.qs-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .9rem; background: var(--clr-bg); border-radius: var(--radius-sm); border: 1px solid var(--clr-border); }
-.qs-item__info { display: flex; flex-direction: column; }
-.qs-item__name { font-size: .88rem; font-weight: 500; }
-.qs-item__date { font-size: .75rem; }
-.qs-score { display: flex; flex-direction: column; align-items: center; min-width: 48px; font-size: .95rem; font-weight: 800; border-radius: 8px; padding: .3rem .6rem; }
-.qs-score small { font-size: .7rem; font-weight: 500; }
-.qs-score--good { background: #dcfce7; color: #15803d; }
-.qs-score--ok   { background: #fef9c3; color: #a16207; }
-.qs-score--low  { background: #fee2e2; color: #b91c1c; }
+.sd-plan-chip--pro {
+    background: #fef9c3;
+    color: #854d0e;
+}
 
-/* Favourites */
-.fav-row { display: flex; flex-wrap: wrap; gap: .75rem; }
-.fav-chip { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .75rem .6rem; border: 1px solid var(--clr-border); border-radius: var(--radius-sm); background: var(--clr-bg); text-decoration: none; color: inherit; transition: box-shadow .2s, transform .2s; min-width: 90px; text-align: center; }
-.fav-chip:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.fav-chip img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--clr-primary-light); }
-.fav-chip span { font-size: .82rem; font-weight: 600; }
-.fav-chip small { font-size: .72rem; color: var(--clr-muted); }
+.sd-plan-chip--free {
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .3);
+}
 
-/* Notifications */
-.notif-count { display: inline-grid; place-items: center; background: var(--clr-danger); color: #fff; border-radius: 99px; font-size: .68rem; font-weight: 800; min-width: 18px; height: 18px; padding: 0 4px; }
-.notif-feed { list-style: none; display: flex; flex-direction: column; gap: .65rem; }
-.notif-feed__item { display: flex; align-items: flex-start; gap: .75rem; }
-.notif-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--clr-primary); margin-top: .45rem; }
-.notif-feed__item p { font-size: .88rem; line-height: 1.5; margin: 0 0 .15rem; }
-.notif-feed__item time { font-size: .75rem; color: var(--clr-muted); }
+.sd-plan-expiry {
+    font-size: .78rem;
+    opacity: .75;
+    color: #fff;
+    text-align: right;
+    margin: 0;
+}
 
-/* Quick actions */
-.dash-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
-.dash-action-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem 1.25rem; background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius-sm); font-size: .9rem; font-weight: 500; text-decoration: none; color: var(--clr-text); transition: background .2s, box-shadow .2s, transform .2s; }
-.dash-action-btn:hover { background: var(--clr-primary-light); color: var(--clr-primary); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.sd-upgrade-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .9rem;
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+    border-radius: 99px;
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, .35);
+    transition: background var(--transition);
+}
 
-/* Badge helpers */
-.dbadge { display: inline-block; padding: .22rem .6rem; border-radius: 99px; font-size: .74rem; font-weight: 600; white-space: nowrap; }
-.dbadge--badge-warning   { background: #fef3c7; color: #92400e; }
-.dbadge--badge-success   { background: #dcfce7; color: #166534; }
-.dbadge--badge-danger    { background: #fee2e2; color: #991b1b; }
-.dbadge--badge-info      { background: #dbeafe; color: #1e40af; }
-.dbadge--badge-secondary { background: var(--clr-border); color: var(--clr-muted); }
+.sd-upgrade-btn:hover {
+    background: rgba(255, 255, 255, .35);
+}
 
-.muted { color: var(--clr-muted); font-size: .82rem; }
+/* ── Stat Cards ─────────────────────────────────────────────────────────── */
+.sd-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.sd-stat {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.4rem;
+    flex: 1 1 160px;
+    box-shadow: var(--shadow-sm);
+}
+
+.sd-stat__icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.sd-stat__val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--clr-text);
+    margin: 0;
+}
+
+.sd-stat__lbl {
+    font-size: .75rem;
+    color: var(--clr-muted);
+    margin: .15rem 0 0;
+}
+
+/* ── Main Grid ──────────────────────────────────────────────────────────── */
+.sd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 860px) {
+    .sd-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Widgets ────────────────────────────────────────────────────────────── */
+.sd-widget {
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Wide widget spans both columns */
+.sd-widget--wide {
+    grid-column: 1 / -1;
+}
+
+/* Full-width widget spans the whole grid row */
+.sd-widget--full {
+    grid-column: 1 / -1;
+}
+
+.sd-widget__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.sd-widget__head h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    color: var(--clr-text);
+}
+
+.sd-widget__more {
+    font-size: .82rem;
+    color: var(--clr-primary);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.sd-widget__more:hover {
+    text-decoration: underline;
+}
+
+/* Empty state */
+.sd-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding: 2rem 1rem;
+    color: var(--clr-muted);
+    text-align: center;
+}
+
+.sd-empty i {
+    opacity: .4;
+}
+
+/* ── Upcoming Sessions ──────────────────────────────────────────────────── */
+.sd-session-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.sd-session-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    background: var(--clr-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--clr-border);
+}
+
+.sd-session-item__avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--clr-border);
+    flex-shrink: 0;
+}
+
+.sd-session-item__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+}
+
+.sd-session-item__info strong {
+    font-size: .95rem;
+    color: var(--clr-text);
+}
+
+.sd-session-item__info span {
+    font-size: .82rem;
+    color: var(--clr-muted);
+}
+
+.sd-session-item__time {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    color: var(--clr-muted) !important;
+}
+
+/* Status badges */
+.sd-badge {
+    display: inline-block;
+    padding: .22rem .65rem;
+    border-radius: 99px;
+    font-size: .74rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sd-badge--warning   { background: #fef3c7; color: #92400e; }
+.sd-badge--success   { background: #dcfce7; color: #166534; }
+.sd-badge--danger    { background: #fee2e2; color: #991b1b; }
+.sd-badge--info      { background: #dbeafe; color: #1e40af; }
+.sd-badge--secondary { background: var(--clr-border); color: var(--clr-muted); }
+
+/* ── Lesson Progress ────────────────────────────────────────────────────── */
+.sd-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.sd-ring {
+    width: 100px;
+    height: 100px;
+    transform: rotate(-90deg);
+}
+
+.sd-ring__label {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sd-ring__pct {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--clr-primary);
+}
+
+.sd-ring__sub {
+    font-size: .65rem;
+    color: var(--clr-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.sd-lesson-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+}
+
+.sd-lp-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.sd-lp-item__icon {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    background: var(--clr-bg);
+    color: var(--clr-primary);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    font-size: .95rem;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background var(--transition);
+}
+
+.sd-lp-item__icon:hover {
+    background: var(--clr-border);
+}
+
+.sd-lp-item__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sd-lp-item__title {
+    font-size: .85rem;
+    font-weight: 500;
+    display: block;
+    margin-bottom: .3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--clr-text);
+}
+
+.sd-lp-track {
+    height: 7px;
+    background: var(--clr-border);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.sd-lp-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .4s ease;
+}
+
+.sd-lp-item__pct {
+    font-size: .78rem;
+    font-weight: 700;
+    min-width: 32px;
+    text-align: right;
+}
+
+/* ── Quiz Scores ────────────────────────────────────────────────────────── */
+.sd-quiz-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+}
+
+.sd-qs-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .65rem .9rem;
+    background: var(--clr-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--clr-border);
+}
+
+.sd-qs-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+
+.sd-qs-item__name {
+    font-size: .88rem;
+    font-weight: 500;
+    color: var(--clr-text);
+}
+
+.sd-qs-item__date {
+    font-size: .75rem;
+    color: var(--clr-muted);
+}
+
+.sd-qs-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 48px;
+    font-size: .95rem;
+    font-weight: 800;
+    border-radius: var(--radius-md);
+    padding: .3rem .6rem;
+}
+
+.sd-qs-score small {
+    font-size: .7rem;
+    font-weight: 500;
+}
+
+/* Colour-coded score badges — hex values used for accessible contrast */
+.sd-qs-score--good { background: #dcfce7; color: #15803d; }
+.sd-qs-score--ok   { background: #fef9c3; color: #a16207; }
+.sd-qs-score--low  { background: #fee2e2; color: #b91c1c; }
+
+/* ── Favourite Tutors ───────────────────────────────────────────────────── */
+.sd-fav-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.sd-fav-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+    padding: .75rem .6rem;
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    background: var(--clr-bg);
+    text-decoration: none;
+    color: var(--clr-text);
+    transition: box-shadow var(--transition), transform var(--transition);
+    min-width: 90px;
+    text-align: center;
+}
+
+.sd-fav-chip:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.sd-fav-chip img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--clr-border);
+}
+
+.sd-fav-chip span {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--clr-text);
+}
+
+.sd-fav-chip small {
+    font-size: .72rem;
+    color: var(--clr-muted);
+}
+
+/* ── Notifications Feed ─────────────────────────────────────────────────── */
+.sd-notif-count {
+    display: inline-grid;
+    place-items: center;
+    background: #ef4444;
+    color: #fff;
+    border-radius: 99px;
+    font-size: .68rem;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    vertical-align: middle;
+}
+
+.sd-notif-feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+}
+
+.sd-notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+}
+
+.sd-notif-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--clr-primary);
+    margin-top: .45rem;
+}
+
+.sd-notif-item p {
+    font-size: .88rem;
+    line-height: 1.5;
+    margin: 0 0 .15rem;
+    color: var(--clr-text);
+}
+
+.sd-notif-item time {
+    font-size: .75rem;
+    color: var(--clr-muted);
+}
+
+/* ── Quick Action Bar ───────────────────────────────────────────────────── */
+.sd-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.sd-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .65rem 1.25rem;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    font-size: .9rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--clr-text);
+    transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.sd-action-btn:hover {
+    background: var(--clr-bg);
+    color: var(--clr-primary);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
 </style>
 
 <?php require_once __DIR__ . '/../includes/app-footer.php'; ?>
