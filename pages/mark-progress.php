@@ -15,6 +15,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Must be logged in
 require_login();
 
+// Only Student accounts may modify lesson progress
+$_mp_user = current_user();
+if (strtolower((string)($_mp_user['role_name'] ?? '')) !== 'student') {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Only Student accounts may track lesson progress.']);
+    exit;
+}
+
 // Verify CSRF from header
 $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
 if (!verify_csrf($headerToken)) {

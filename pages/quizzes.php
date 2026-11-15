@@ -4,6 +4,25 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
+require_login();
+
+// ── Role guard: only Students may take quizzes ──────────────────────────────
+$_qz_user = current_user();
+$_qz_role = strtolower((string)($_qz_user['role_name'] ?? ''));
+if ($_qz_role !== 'student') {
+    if ($_qz_role === 'tutor') {
+        header('Location: /AralPal/dashboard/tutor.php');
+        exit;
+    }
+    if ($_qz_role === 'admin') {
+        header('Location: /AralPal/admin/users.php');
+        exit;
+    }
+    // Unknown or missing role — reject
+    http_response_code(403);
+    exit('Access denied.');
+}
+
 $db = get_db();
 
 $db->exec("
@@ -38,12 +57,21 @@ CREATE TABLE IF NOT EXISTS `quiz_answers` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `attempt_id` INT UNSIGNED NOT NULL,
   `question_id` INT UNSIGNED NOT NULL,
-  `chosen_option` TINYINT UNSIGNED NOT NULL,
+  `chosen_option` TINYINT UNSIGNED DEFAULT NULL COMMENT 'NULL = unanswered',
   `is_correct` TINYINT(1) NOT NULL DEFAULT 0,
   CONSTRAINT `fk_ans_attempt` FOREIGN KEY (`attempt_id`) REFERENCES `quiz_attempts`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ans_question` FOREIGN KEY (`question_id`) REFERENCES `quiz_questions`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
+
+// Migration: allow NULL in chosen_option for existing databases where the
+// column was originally NOT NULL. Safe to run every boot — MODIFY COLUMN is
+// idempotent and preserves existing data.
+try {
+    $db->exec("ALTER TABLE `quiz_answers` MODIFY COLUMN `chosen_option` TINYINT UNSIGNED DEFAULT NULL COMMENT 'NULL = unanswered'");
+} catch (PDOException $e) {
+    // Column may already be NULL-able or table not yet created — non-fatal
+}
 
 // Seed PHP questions
 $phpSeeds = [
@@ -149,7 +177,125 @@ $dbIntroSeeds = [
      'options' => ['Foreign key', 'Index', 'Primary key', 'Data type']],
 ];
 
-$allSeeds = array_merge($phpSeeds, $htmlSeeds, $jsSeeds, $cssSeeds, $loopsSeeds, $functionsSeeds, $arraysSeeds, $mysqlSeeds, $dbIntroSeeds);
+$allSeeds = array_merge(
+    $phpSeeds, $htmlSeeds, $jsSeeds, $cssSeeds, $loopsSeeds,
+    $functionsSeeds, $arraysSeeds, $mysqlSeeds, $dbIntroSeeds,
+    // ── 16 new lesson quizzes ──
+    [
+        // HTML Fundamentals
+        ['lesson_slug' => 'html-fundamentals', 'question_text' => 'Which HTML element defines the visible page content?', 'correct_option' => 2, 'explanation' => 'The <body> element contains all visible content.',
+         'options' => ['<head>', '<header>', '<body>', '<main>']],
+        ['lesson_slug' => 'html-fundamentals', 'question_text' => 'Which attribute provides alternative text for an image?', 'correct_option' => 0, 'explanation' => 'The alt attribute describes the image for screen readers and when the image fails to load.',
+         'options' => ['alt', 'title', 'src', 'description']],
+        ['lesson_slug' => 'html-fundamentals', 'question_text' => 'Which HTML tag creates a numbered list?', 'correct_option' => 1, 'explanation' => 'The <ol> element creates an ordered (numbered) list.',
+         'options' => ['<ul>', '<ol>', '<list>', '<dl>']],
+        // Responsive Web Design
+        ['lesson_slug' => 'responsive-design', 'question_text' => 'What is a mobile-first CSS strategy?', 'correct_option' => 0, 'explanation' => 'Mobile-first writes base styles for small screens, then uses min-width media queries to enhance wider layouts.',
+         'options' => ['Base styles for mobile, enhance for wider screens', 'Desktop styles first, scale down', 'Only style mobile devices', 'Use only percentage widths']],
+        ['lesson_slug' => 'responsive-design', 'question_text' => 'Which CSS function creates fluid font sizes?', 'correct_option' => 2, 'explanation' => 'clamp() takes a minimum, preferred fluid value, and maximum.',
+         'options' => ['min()', 'max()', 'clamp()', 'scale()']],
+        ['lesson_slug' => 'responsive-design', 'question_text' => 'Which CSS Grid property creates responsive columns without media queries?', 'correct_option' => 1, 'explanation' => 'repeat(auto-fill, minmax(280px, 1fr)) creates as many columns as fit.',
+         'options' => ['grid-auto-flow', 'repeat(auto-fill, minmax(...))', 'flex-wrap', 'grid-template-rows']],
+        // DOM Manipulation
+        ['lesson_slug' => 'dom-manipulation', 'question_text' => 'Which method selects the first element matching a CSS selector?', 'correct_option' => 0, 'explanation' => 'querySelector() returns the first matching element.',
+         'options' => ['querySelector()', 'getElementById()', 'getElementsByClassName()', 'querySelectorAll()']],
+        ['lesson_slug' => 'dom-manipulation', 'question_text' => 'Which method creates a new HTML element?', 'correct_option' => 1, 'explanation' => 'document.createElement() creates a new DOM node.',
+         'options' => ['document.createNode()', 'document.createElement()', 'document.newElement()', 'document.makeElement()']],
+        ['lesson_slug' => 'dom-manipulation', 'question_text' => 'What is event delegation?', 'correct_option' => 2, 'explanation' => 'Event delegation attaches one listener to a parent and checks event.target, handling dynamically added children.',
+         'options' => ['Removing all event listeners', 'Using only inline onclick', 'Attaching one listener to a parent instead of each child', 'Preventing default behavior']],
+        // PHP and MySQL
+        ['lesson_slug' => 'php-mysql', 'question_text' => 'What does PDO stand for in PHP?', 'correct_option' => 1, 'explanation' => 'PDO = PHP Data Objects — a consistent interface for accessing databases.',
+         'options' => ['PHP Database Object', 'PHP Data Objects', 'Personal Data Object', 'PHP Data Operator']],
+        ['lesson_slug' => 'php-mysql', 'question_text' => 'Why use prepared statements?', 'correct_option' => 0, 'explanation' => 'Prepared statements prevent SQL injection by separating query structure from user data.',
+         'options' => ['To prevent SQL injection', 'To make queries faster', 'To cache results', 'To connect to multiple databases']],
+        ['lesson_slug' => 'php-mysql', 'question_text' => 'Which PDO method fetches all rows as an array?', 'correct_option' => 2, 'explanation' => 'fetchAll() returns an array containing all remaining rows.',
+         'options' => ['fetch()', 'fetchOne()', 'fetchAll()', 'fetchArray()']],
+        // CRUD Applications
+        ['lesson_slug' => 'crud-applications', 'question_text' => 'What does CRUD stand for?', 'correct_option' => 0, 'explanation' => 'CRUD = Create, Read, Update, Delete — the four basic data operations.',
+         'options' => ['Create, Read, Update, Delete', 'Copy, Run, Undo, Drop', 'Connect, Request, Use, Disconnect', 'Create, Return, Upload, Download']],
+        ['lesson_slug' => 'crud-applications', 'question_text' => 'What is the Post/Redirect/Get pattern?', 'correct_option' => 2, 'explanation' => 'After a successful POST, redirect with header(Location:) to prevent duplicate submissions on refresh.',
+         'options' => ['Send POST then GET in one request', 'Always use GET for forms', 'Redirect after POST to prevent duplicate submissions', 'Combine POST and GET data']],
+        ['lesson_slug' => 'crud-applications', 'question_text' => 'Why use CSRF tokens?', 'correct_option' => 1, 'explanation' => 'CSRF tokens prevent malicious sites from submitting forms on behalf of a logged-in user.',
+         'options' => ['To speed up form submission', 'To prevent cross-site request forgery attacks', 'To encrypt form data', 'To validate email addresses']],
+        // Introduction to Programming
+        ['lesson_slug' => 'intro-programming', 'question_text' => 'What is a program?', 'correct_option' => 1, 'explanation' => 'A program is a sequence of instructions that a computer follows to perform a task.',
+         'options' => ['A type of computer hardware', 'A sequence of instructions for a computer', 'A programming language', 'A web browser']],
+        ['lesson_slug' => 'intro-programming', 'question_text' => 'What is the fetch-decode-execute cycle?', 'correct_option' => 0, 'explanation' => 'The CPU fetches an instruction, decodes it, executes it, and stores the result.',
+         'options' => ['How the CPU processes instructions', 'How networks send data', 'How databases store records', 'How compilers generate code']],
+        ['lesson_slug' => 'intro-programming', 'question_text' => 'Which is a procedural programming language?', 'correct_option' => 2, 'explanation' => 'PHP supports procedural programming with step-by-step functions.',
+         'options' => ['HTML', 'CSS', 'PHP', 'JSON']],
+        // Variables and Data Types
+        ['lesson_slug' => 'variables-types', 'question_text' => 'Which is a primitive data type?', 'correct_option' => 2, 'explanation' => 'A string (text) is a primitive data type.',
+         'options' => ['Array', 'Object', 'String', 'Function']],
+        ['lesson_slug' => 'variables-types', 'question_text' => 'What does === check in PHP?', 'correct_option' => 2, 'explanation' => '=== checks both value AND type equality (strict comparison).',
+         'options' => ['Only value', 'Only type', 'Both value and type', 'Memory address']],
+        ['lesson_slug' => 'variables-types', 'question_text' => 'Which PHP function checks if a variable is an integer?', 'correct_option' => 0, 'explanation' => 'is_int() returns true if the variable is an integer.',
+         'options' => ['is_int()', 'is_integer_type()', 'check_int()', 'typeof()']],
+        // Conditional Statements
+        ['lesson_slug' => 'conditionals', 'question_text' => 'Which operator means "AND" in PHP?', 'correct_option' => 2, 'explanation' => 'The && operator returns true only if both conditions are true.',
+         'options' => ['||', '!', '&&', '==']],
+        ['lesson_slug' => 'conditionals', 'question_text' => 'What does a switch statement do?', 'correct_option' => 1, 'explanation' => 'A switch compares one value against multiple cases — cleaner than a long if/elseif chain.',
+         'options' => ['Loops through an array', 'Compares one value against multiple cases', 'Declares a variable', 'Defines a function']],
+        ['lesson_slug' => 'conditionals', 'question_text' => 'Which value is considered falsy in PHP?', 'correct_option' => 0, 'explanation' => 'The integer 0 is falsy in PHP, along with empty strings, null, and false.',
+         'options' => ['0', '1', '"0"', '"false"']],
+        // Problem Solving
+        ['lesson_slug' => 'problem-solving', 'question_text' => 'What is the first step in problem solving?', 'correct_option' => 0, 'explanation' => 'Understanding the problem completely — inputs, outputs, edge cases — comes before writing any code.',
+         'options' => ['Understand the problem', 'Write code immediately', 'Choose a programming language', 'Run the program']],
+        ['lesson_slug' => 'problem-solving', 'question_text' => 'What is pseudocode?', 'correct_option' => 1, 'explanation' => 'Pseudocode is plain-language description of an algorithm, written before actual code.',
+         'options' => ['A compiled programming language', 'Plain-language steps describing an algorithm', 'A type of database query', 'Machine code']],
+        ['lesson_slug' => 'problem-solving', 'question_text' => 'Why test with edge cases?', 'correct_option' => 2, 'explanation' => 'Edge cases (empty input, single element, extreme values) reveal bugs that normal inputs miss.',
+         'options' => ['To make code run faster', 'To reduce file size', 'To catch bugs normal inputs miss', 'To improve code formatting']],
+        // Database Design
+        ['lesson_slug' => 'database-design', 'question_text' => 'What does an ER diagram show?', 'correct_option' => 1, 'explanation' => 'An Entity-Relationship diagram visualises entities, attributes, and relationships between tables.',
+         'options' => ['Database performance metrics', 'Entities, attributes, and relationships', 'SQL query results', 'Server configuration']],
+        ['lesson_slug' => 'database-design', 'question_text' => 'What is normalisation?', 'correct_option' => 0, 'explanation' => 'Normalisation removes data redundancy by splitting data into related tables.',
+         'options' => ['Removing data redundancy by splitting into related tables', 'Adding more columns to a table', 'Deleting unused rows', 'Encrypting the database']],
+        ['lesson_slug' => 'database-design', 'question_text' => 'What does a foreign key do?', 'correct_option' => 2, 'explanation' => 'A foreign key stores the primary key of a related row, enforcing referential integrity.',
+         'options' => ['Encrypts a column', 'Creates an index', 'Stores the primary key of a related row', 'Counts total rows']],
+        // SQL Queries
+        ['lesson_slug' => 'sql-queries', 'question_text' => 'Which clause filters rows in a SELECT query?', 'correct_option' => 0, 'explanation' => 'The WHERE clause filters rows based on a condition.',
+         'options' => ['WHERE', 'FILTER', 'HAVING', 'ORDER BY']],
+        ['lesson_slug' => 'sql-queries', 'question_text' => 'What does GROUP BY do?', 'correct_option' => 1, 'explanation' => 'GROUP BY groups rows that share a value, enabling aggregate functions like COUNT() per group.',
+         'options' => ['Sorts results alphabetically', 'Groups rows that share a value', 'Removes duplicates', 'Limits the result count']],
+        ['lesson_slug' => 'sql-queries', 'question_text' => 'Which JOIN returns all rows from the left table even with no match?', 'correct_option' => 1, 'explanation' => 'LEFT JOIN returns all left-table rows plus matching right-table rows (NULL where no match).',
+         'options' => ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'CROSS JOIN']],
+        // Database Relationships
+        ['lesson_slug' => 'db-relationships', 'question_text' => 'How is a many-to-many relationship modelled?', 'correct_option' => 2, 'explanation' => 'A junction table holds foreign keys to both sides of the relationship.',
+         'options' => ['With a single foreign key column', 'With a composite primary key only', 'With a junction table holding both foreign keys', 'With a recursive query']],
+        ['lesson_slug' => 'db-relationships', 'question_text' => 'What does ON DELETE CASCADE do?', 'correct_option' => 0, 'explanation' => 'ON DELETE CASCADE automatically deletes child rows when the parent row is deleted.',
+         'options' => ['Automatically deletes child rows when parent is deleted', 'Prevents deletion of parent rows', 'Sets child foreign keys to NULL', 'Duplicates the parent row']],
+        ['lesson_slug' => 'db-relationships', 'question_text' => 'In a one-to-many relationship, where is the foreign key stored?', 'correct_option' => 1, 'explanation' => 'The foreign key goes on the "many" side — the table that belongs to the "one" side.',
+         'options' => ['On the "one" side', 'On the "many" side', 'In a separate junction table', 'In the primary key']],
+        // Computer Fundamentals
+        ['lesson_slug' => 'computer-fundamentals', 'question_text' => 'Which component performs calculations in a computer?', 'correct_option' => 0, 'explanation' => 'The CPU (Central Processing Unit) performs all arithmetic and logic operations.',
+         'options' => ['CPU', 'RAM', 'Hard Drive', 'GPU']],
+        ['lesson_slug' => 'computer-fundamentals', 'question_text' => 'What is RAM?', 'correct_option' => 1, 'explanation' => 'RAM is volatile memory that holds data currently in use — lost when power is off.',
+         'options' => ['Permanent storage', 'Volatile temporary memory', 'A type of CPU', 'A network protocol']],
+        ['lesson_slug' => 'computer-fundamentals', 'question_text' => 'Which is faster: SSD or HDD?', 'correct_option' => 0, 'explanation' => 'SSDs use flash chips and have no moving parts, making them much faster than spinning HDDs.',
+         'options' => ['SSD', 'HDD', 'They are the same speed', 'Depends on the brand']],
+        // Operating Systems
+        ['lesson_slug' => 'operating-systems', 'question_text' => 'What is the main role of an operating system?', 'correct_option' => 1, 'explanation' => 'The OS manages hardware resources (CPU, memory, storage, devices) on behalf of applications.',
+         'options' => ['To compile code', 'To manage hardware resources for applications', 'To browse the internet', 'To send emails']],
+        ['lesson_slug' => 'operating-systems', 'question_text' => 'What is a process?', 'correct_option' => 0, 'explanation' => 'A process is a running program with its own memory space.',
+         'options' => ['A running program with its own memory space', 'A type of file', 'A hardware component', 'A network connection']],
+        ['lesson_slug' => 'operating-systems', 'question_text' => 'Which OS powers most web servers?', 'correct_option' => 1, 'explanation' => 'Linux is free, stable, and has excellent PHP/MySQL support — it powers most web servers.',
+         'options' => ['Windows', 'Linux', 'macOS', 'Android']],
+        // Computer Networks
+        ['lesson_slug' => 'computer-networks', 'question_text' => 'What does DNS do?', 'correct_option' => 1, 'explanation' => 'DNS (Domain Name System) translates domain names like google.com into IP addresses.',
+         'options' => ['Encrypts web traffic', 'Translates domain names to IP addresses', 'Stores website files', 'Sends emails']],
+        ['lesson_slug' => 'computer-networks', 'question_text' => 'What protocol does HTTPS use for encryption?', 'correct_option' => 0, 'explanation' => 'HTTPS wraps HTTP in TLS (Transport Layer Security) encryption.',
+         'options' => ['TLS', 'FTP', 'SMTP', 'DNS']],
+        ['lesson_slug' => 'computer-networks', 'question_text' => 'What is an IP address?', 'correct_option' => 2, 'explanation' => 'An IP address is a unique number identifying a device on a network.',
+         'options' => ['A website name', 'A type of cable', 'A unique number identifying a device on a network', 'A password']],
+        // Cybersecurity Basics
+        ['lesson_slug' => 'cybersecurity', 'question_text' => 'What is SQL injection?', 'correct_option' => 0, 'explanation' => 'SQL injection inserts malicious SQL through user input — prevented by using prepared statements.',
+         'options' => ['Inserting SQL code through user input to manipulate the database', 'A type of password attack', 'A network protocol exploit', 'A hardware failure']],
+        ['lesson_slug' => 'cybersecurity', 'question_text' => 'Which PHP function safely hashes passwords?', 'correct_option' => 1, 'explanation' => 'password_hash() uses bcrypt to securely hash passwords for storage.',
+         'options' => ['md5()', 'password_hash()', 'base64_encode()', 'sha1()']],
+        ['lesson_slug' => 'cybersecurity', 'question_text' => 'What does the httponly cookie flag do?', 'correct_option' => 0, 'explanation' => 'httponly prevents JavaScript from accessing the cookie, mitigating XSS session theft.',
+         'options' => ['Prevents JavaScript from reading the cookie', 'Encrypts the cookie value', 'Makes the cookie permanent', 'Blocks third-party cookies']],
+    ]
+);
 
 $insertQuestion = $db->prepare(
     'INSERT IGNORE INTO quiz_questions (lesson_slug, question_text, correct_option, explanation)
@@ -208,6 +354,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // Enforce Student role on submission
+    $submitter = current_user();
+    if (!$submitter || strtolower((string)($submitter['role_name'] ?? '')) !== 'student') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Only Student accounts may submit quizzes.']);
+        exit;
+    }
+
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body || !isset($body['quiz'], $body['answers']) || !is_array($body['answers'])) {
         http_response_code(400);
@@ -215,12 +369,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $slug    = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)$body['quiz']));
-    $answers = $body['answers']; // array of chosen_option indices (int)
+    $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)$body['quiz']));
 
-    // Load questions for this slug (ordered by id)
+    // Validate slug against active lessons in DB
+    $slugCheck = $db->prepare('SELECT COUNT(*) FROM lessons WHERE slug = ? AND is_active = 1');
+    $slugCheck->execute([$slug]);
+    if ((int)$slugCheck->fetchColumn() === 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid lesson slug']);
+        exit;
+    }
+
+    // Reject excessive submissions (more than 200 answers = abuse signal)
+    $answers = $body['answers'];
+    if (count($answers) > 200) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Too many answers submitted']);
+        exit;
+    }
+
+    // Load questions for this slug (ordered by id) — include option count for validation
     $qStmt = $db->prepare(
-        'SELECT id, correct_option, explanation FROM quiz_questions WHERE lesson_slug = ? ORDER BY id ASC'
+        'SELECT q.id, q.correct_option, q.explanation,
+                (SELECT COUNT(*) FROM quiz_options o WHERE o.question_id = q.id) AS option_count
+         FROM quiz_questions q
+         WHERE q.lesson_slug = ?
+         ORDER BY q.id ASC'
     );
     $qStmt->execute([$slug]);
     $questions = $qStmt->fetchAll();
@@ -235,10 +409,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $score   = 0;
     $results = [];
 
+    /**
+     * Strict answer validator.
+     * Returns -1 for null/missing/malformed (unanswered).
+     * Returns the integer index if it's a valid option (0-based, within range).
+     * Never converts a non-integer string to option 0.
+     */
+    $validateAnswer = function($raw, int $optionCount): int {
+        if ($raw === null) return -1;
+        if (is_int($raw) && $raw >= 0 && $raw < $optionCount) return $raw;
+        // Reject strings, floats, bools, out-of-range ints — treat as unanswered
+        return -1;
+    };
+
+    // Validate each answer against the actual options available for its question.
     foreach ($questions as $i => $q) {
-        $chosen    = isset($answers[$i]) ? (int)$answers[$i] : -1;
-        $correct   = (int)$q['correct_option'];
-        $is_correct = ($chosen === $correct) ? 1 : 0;
+        $raw_answer  = $answers[$i] ?? null;
+        $optionCount = (int)($q['option_count'] ?? 4);
+        $chosen      = $validateAnswer($raw_answer, $optionCount);
+        $correct     = (int)$q['correct_option'];
+
+        // A question is correct only if an actual answer was given AND it matches
+        $is_correct = ($chosen >= 0 && $chosen === $correct) ? 1 : 0;
         if ($is_correct) $score++;
         $results[] = [
             'correct_option' => $correct,
@@ -250,12 +442,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $pct = $total > 0 ? round($score / $total * 100) : 0;
 
-    // Save attempt if logged in
-    $user = current_user();
-    if ($user) {
+    // Save attempt and answers atomically using a transaction.
+    // Track $saved so the response accurately reports persistence status.
+    $saved = false;
+    try {
+        $db->beginTransaction();
+
         $db->prepare(
             'INSERT INTO quiz_attempts (user_id, lesson_slug, score, total) VALUES (?, ?, ?, ?)'
-        )->execute([$user['id'], $slug, $score, $total]);
+        )->execute([$submitter['id'], $slug, $score, $total]);
 
         $attemptId = (int)$db->lastInsertId();
 
@@ -263,17 +458,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'INSERT INTO quiz_answers (attempt_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?)'
         );
         foreach ($questions as $i => $q) {
-            $chosen     = isset($answers[$i]) ? (int)$answers[$i] : 0;
-            $is_correct = ($chosen === (int)$q['correct_option']) ? 1 : 0;
-            $saveAns->execute([$attemptId, $q['id'], $chosen, $is_correct]);
+            $raw_answer  = $answers[$i] ?? null;
+            $optionCount = (int)($q['option_count'] ?? 4);
+            $chosen      = $validateAnswer($raw_answer, $optionCount);
+
+            // Store NULL for unanswered/malformed — never convert to option 0
+            $db_chosen  = ($chosen === -1) ? null : $chosen;
+            $is_correct = ($chosen >= 0 && $chosen === (int)$q['correct_option']) ? 1 : 0;
+            $saveAns->execute([$attemptId, $q['id'], $db_chosen, $is_correct]);
         }
+
+        $db->commit();
+        $saved = true;
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('AralPal quiz save error: ' . $e->getMessage());
+        // $saved stays false — response will report the save failure
     }
 
     echo json_encode([
         'score'   => $score,
         'total'   => $total,
         'pct'     => $pct,
-        'saved'   => (bool)($user ?? false),
+        'saved'   => $saved,
         'results' => $results,
     ]);
     exit;

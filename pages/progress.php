@@ -16,6 +16,10 @@ $_p_user = current_user();
 $_p_role = strtolower((string)($_p_user['role_name'] ?? ''));
 if ($_p_role === 'tutor') { header('Location: /AralPal/dashboard/tutor.php'); exit; }
 if ($_p_role === 'admin') { header('Location: /AralPal/admin/users.php'); exit; }
+if ($_p_role !== 'student') {
+    http_response_code(403);
+    exit('Access denied.');
+}
 
 $db      = get_db();
 $userId  = (int)$_p_user['id'];

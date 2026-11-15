@@ -41,7 +41,8 @@ $sub_stmt = $db->prepare('
 ');
 $sub_stmt->execute([$user_id]);
 $subscription = $sub_stmt->fetch();
-$is_pro = $subscription && (float) $subscription['price'] > 0;
+// Identify Pro by plan name, not price — stable across price changes
+$is_pro = $subscription && str_contains(strtolower((string)$subscription['plan_name']), 'pro');
 
 // ── Pending bookings ───────────────────────────────────────────────────────
 $pending_stmt = $db->prepare('

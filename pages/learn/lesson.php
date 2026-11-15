@@ -14,7 +14,24 @@ require_login();
 $db      = get_db();
 $user    = current_user();
 $userId  = (int)$user['id'];
-$isStudent = strtolower((string)($user['role_name'] ?? '')) === 'student';
+
+// Strict Student-only access — redirect all other roles
+$_lesson_role = strtolower((string)($user['role_name'] ?? ''));
+if ($_lesson_role === 'tutor') {
+    header('Location: /AralPal/dashboard/tutor.php');
+    exit;
+}
+if ($_lesson_role === 'admin') {
+    header('Location: /AralPal/admin/users.php');
+    exit;
+}
+if ($_lesson_role !== 'student') {
+    // Unknown or missing role — reject
+    http_response_code(403);
+    exit('Access denied.');
+}
+
+$isStudent = true; // guaranteed by the gate above
 
 $slug = trim($_GET['slug'] ?? '');
 if ($slug === '') {
