@@ -87,7 +87,69 @@ $jsSeeds = [
      'options' => ['Only value equality', 'Only type equality', 'Both value and type equality', 'Reference equality']],
 ];
 
-$allSeeds = array_merge($phpSeeds, $htmlSeeds, $jsSeeds);
+// Seed CSS Fundamentals questions
+$cssSeeds = [
+    ['lesson_slug' => 'css-fundamentals', 'question_text' => 'Which CSS property controls text size?', 'correct_option' => 1, 'explanation' => 'The font-size property sets the size of text.',
+     'options' => ['text-size', 'font-size', 'size', 'text-style']],
+    ['lesson_slug' => 'css-fundamentals', 'question_text' => 'What does display:flex enable?', 'correct_option' => 0, 'explanation' => 'Flexbox is a one-dimensional layout system for aligning items.',
+     'options' => ['A flexible one-dimensional layout', 'A grid layout', 'Absolute positioning', 'Table layout']],
+    ['lesson_slug' => 'css-fundamentals', 'question_text' => 'Which selector has the highest specificity?', 'correct_option' => 2, 'explanation' => 'ID selectors have higher specificity than classes and tags.',
+     'options' => ['Tag selector (p)', 'Class selector (.card)', 'ID selector (#hero)', 'Universal (*)']],
+    ['lesson_slug' => 'css-fundamentals', 'question_text' => 'Which property adds space inside the border?', 'correct_option' => 1, 'explanation' => 'Padding is the space between content and border.',
+     'options' => ['margin', 'padding', 'gap', 'spacing']],
+];
+
+// Seed Loops questions
+$loopsSeeds = [
+    ['lesson_slug' => 'loops', 'question_text' => 'Which loop runs a known number of times?', 'correct_option' => 0, 'explanation' => 'A for loop is used when the iteration count is known.',
+     'options' => ['for loop', 'while loop', 'do-while', 'if statement']],
+    ['lesson_slug' => 'loops', 'question_text' => 'What does the break statement do?', 'correct_option' => 1, 'explanation' => 'break exits the loop immediately.',
+     'options' => ['Skips the current iteration', 'Exits the loop entirely', 'Pauses execution', 'Restarts the loop']],
+    ['lesson_slug' => 'loops', 'question_text' => 'What does continue do in a loop?', 'correct_option' => 2, 'explanation' => 'continue skips the rest of the current iteration and moves to the next.',
+     'options' => ['Exits the loop', 'Pauses the loop', 'Skips to the next iteration', 'Breaks the program']],
+];
+
+// Seed Functions questions
+$functionsSeeds = [
+    ['lesson_slug' => 'functions', 'question_text' => 'What does a function return if no return statement is used?', 'correct_option' => 1, 'explanation' => 'In PHP, a function without a return statement returns null.',
+     'options' => ['0', 'null', 'false', 'An error']],
+    ['lesson_slug' => 'functions', 'question_text' => 'What are parameters in a function?', 'correct_option' => 0, 'explanation' => 'Parameters are placeholders for values passed when the function is called.',
+     'options' => ['Placeholders for input values', 'The return value', 'Variable names outside the function', 'Loop counters']],
+    ['lesson_slug' => 'functions', 'question_text' => 'Why avoid global variables inside functions?', 'correct_option' => 2, 'explanation' => 'Using parameters instead of globals makes functions easier to test and reuse.',
+     'options' => ['They are slower', 'They cause syntax errors', 'They make functions harder to test and reuse', 'They are not allowed in PHP']],
+];
+
+// Seed Arrays questions
+$arraysSeeds = [
+    ['lesson_slug' => 'arrays', 'question_text' => 'How do you access the third element of an indexed array?', 'correct_option' => 2, 'explanation' => 'Arrays are 0-indexed, so the third element is at index 2.',
+     'options' => ['arr[3]', 'arr(2)', 'arr[2]', 'arr.2']],
+    ['lesson_slug' => 'arrays', 'question_text' => 'Which PHP function counts array elements?', 'correct_option' => 0, 'explanation' => 'count() returns the number of elements in an array.',
+     'options' => ['count()', 'length()', 'size()', 'num()']],
+    ['lesson_slug' => 'arrays', 'question_text' => 'What does array_filter() do?', 'correct_option' => 1, 'explanation' => 'array_filter() keeps only elements where the callback returns true.',
+     'options' => ['Removes all elements', 'Keeps elements matching a condition', 'Sorts the array', 'Merges two arrays']],
+];
+
+// Seed MySQL Fundamentals questions
+$mysqlSeeds = [
+    ['lesson_slug' => 'mysql-fundamentals', 'question_text' => 'Which SQL statement retrieves data?', 'correct_option' => 0, 'explanation' => 'SELECT retrieves rows from a table.',
+     'options' => ['SELECT', 'GET', 'FETCH', 'READ']],
+    ['lesson_slug' => 'mysql-fundamentals', 'question_text' => 'Which data type stores whole numbers in MySQL?', 'correct_option' => 1, 'explanation' => 'INT stores integers (whole numbers).',
+     'options' => ['VARCHAR', 'INT', 'TEXT', 'DATE']],
+    ['lesson_slug' => 'mysql-fundamentals', 'question_text' => 'What does an index do?', 'correct_option' => 0, 'explanation' => 'Indexes speed up SELECT queries by allowing MySQL to find rows without scanning the whole table.',
+     'options' => ['Speeds up queries', 'Stores more data', 'Encrypts the table', 'Prevents duplicate rows']],
+];
+
+// Seed Introduction to Databases questions
+$dbIntroSeeds = [
+    ['lesson_slug' => 'intro-databases', 'question_text' => 'What is a database?', 'correct_option' => 1, 'explanation' => 'A database is an organised collection of structured data stored electronically.',
+     'options' => ['A programming language', 'An organised collection of data', 'A type of file', 'A web server']],
+    ['lesson_slug' => 'intro-databases', 'question_text' => 'Which is a relational database?', 'correct_option' => 0, 'explanation' => 'MySQL stores data in tables with rows and columns — a relational model.',
+     'options' => ['MySQL', 'MongoDB', 'Redis', 'Firebase']],
+    ['lesson_slug' => 'intro-databases', 'question_text' => 'What uniquely identifies a row in a table?', 'correct_option' => 2, 'explanation' => 'A primary key is a column (or set of columns) that uniquely identifies each row.',
+     'options' => ['Foreign key', 'Index', 'Primary key', 'Data type']],
+];
+
+$allSeeds = array_merge($phpSeeds, $htmlSeeds, $jsSeeds, $cssSeeds, $loopsSeeds, $functionsSeeds, $arraysSeeds, $mysqlSeeds, $dbIntroSeeds);
 
 $insertQuestion = $db->prepare(
     'INSERT IGNORE INTO quiz_questions (lesson_slug, question_text, correct_option, explanation)
@@ -220,12 +282,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ── Page setup ────────────────────────────────────────────────────────────────
 $pageTitle = "AralPal – Quizzes";
 
-// Slug → display metadata
+// Slug → display metadata — merge static with DB-loaded titles
 $topicMeta = [
-    'php'        => ['title' => 'PHP Deep Dive',           'icon' => 'fa-brands fa-php'],
-    'html-css'   => ['title' => 'HTML & CSS Basics',        'icon' => 'fa-brands fa-html5'],
-    'javascript' => ['title' => 'JavaScript Fundamentals',  'icon' => 'fa-brands fa-js'],
+    'php'        => ['title' => 'PHP Fundamentals',            'icon' => 'fa-brands fa-php'],
+    'html-css'   => ['title' => 'HTML & CSS Basics',           'icon' => 'fa-brands fa-html5'],
+    'javascript' => ['title' => 'JavaScript Fundamentals',     'icon' => 'fa-brands fa-js'],
+    'css-fundamentals' => ['title' => 'CSS Fundamentals',       'icon' => 'fa-solid fa-paintbrush'],
+    'loops'      => ['title' => 'Loops',                        'icon' => 'fa-solid fa-rotate'],
+    'functions'  => ['title' => 'Functions',                   'icon' => 'fa-solid fa-code'],
+    'arrays'     => ['title' => 'Arrays',                       'icon' => 'fa-solid fa-list-ol'],
+    'mysql-fundamentals' => ['title' => 'MySQL Fundamentals',   'icon' => 'fa-solid fa-database'],
+    'intro-databases' => ['title' => 'Introduction to Databases','icon' => 'fa-solid fa-database'],
 ];
+
+// Merge in any lesson titles from the DB that we don't have in the static map
+try {
+    $dbTopicStmt = $db->query('SELECT slug, title FROM lessons WHERE is_active = 1');
+    foreach ($dbTopicStmt->fetchAll() as $dbTopic) {
+        if (!isset($topicMeta[$dbTopic['slug']])) {
+            $topicMeta[$dbTopic['slug']] = ['title' => $dbTopic['title'], 'icon' => 'fa-solid fa-book'];
+        }
+    }
+} catch (PDOException $e) {}
 
 // Load distinct slugs that actually have questions
 $slugStmt = $db->query('SELECT DISTINCT lesson_slug FROM quiz_questions ORDER BY lesson_slug');

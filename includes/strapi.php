@@ -19,8 +19,16 @@
  */
 function strapi_fetch(string $endpoint, int $ttl = 60): ?array
 {
-    $baseUrl = defined('STRAPI_URL')   ? rtrim(STRAPI_URL, '/')   : 'http://localhost:1337';
-    $token   = defined('STRAPI_TOKEN') ? STRAPI_TOKEN             : '';
+    $baseUrl = defined('STRAPI_URL') && STRAPI_URL !== ''
+        ? rtrim(STRAPI_URL, '/')
+        : 'http://localhost:1337';
+
+    $token = defined('STRAPI_TOKEN') ? STRAPI_TOKEN : '';
+
+    // Warn server-side only — never expose the token value or its absence in output.
+    if ($token === '') {
+        error_log('AralPal: STRAPI_TOKEN is not set. Requests to Strapi will be unauthenticated.');
+    }
 
     $cacheDir  = sys_get_temp_dir() . '/aralpal_strapi_cache';
     $cacheFile = $cacheDir . '/' . md5($endpoint) . '.json';
@@ -35,14 +43,16 @@ function strapi_fetch(string $endpoint, int $ttl = 60): ?array
 
     $url = $baseUrl . $endpoint;
 
+    $headers = ['Accept: application/json'];
+    if ($token !== '') {
+        $headers[] = 'Authorization: Bearer ' . $token;
+    }
+
     $opts = [
         'http' => [
-            'method'  => 'GET',
-            'header'  => implode("\r\n", [
-                'Accept: application/json',
-                $token ? 'Authorization: Bearer ' . $token : '',
-            ]),
-            'timeout' => 5,
+            'method'        => 'GET',
+            'header'        => implode("\r\n", $headers),
+            'timeout'       => 5,
             'ignore_errors' => true,
         ],
     ];
@@ -92,11 +102,12 @@ function strapi_get_lessons(): array
         $lessons[] = [
             'icon'        => $attr['icon']        ?? '📖',
             'category'    => $attr['category']    ?? 'General',
-            'title'       => $attr['title']        ?? '',
+            'title'       => $attr['title']       ?? '',
             'description' => $attr['description'] ?? '',
-            'level'       => $attr['level']        ?? 'Beginner',
-            'duration'    => $attr['duration']     ?? '',
-            'link'        => $attr['link']         ?? '#',
+            'level'       => $attr['level']       ?? 'Beginner',
+            'duration'    => $attr['duration']    ?? '',
+            'link'        => $attr['link']        ?? '#',
+            'color'       => $attr['color']       ?? '#6366f1',
         ];
     }
 
@@ -138,7 +149,17 @@ function strapi_get_homepage(): array
 {
     $data = strapi_fetch('/api/homepage-content', 300);
 
+    if ($data === null) {
+        // strapi_fetch already logged the network/parse error.
+        return ['hero_title' => '', 'hero_description' => '', 'about_title' => '', 'about_body' => ''];
+    }
+
+    // Strapi v4: data lives under data.attributes; v5: data is flat.
     $attr = $data['data']['attributes'] ?? $data['data'] ?? [];
+
+    if (empty($attr)) {
+        error_log('AralPal: Strapi homepage-content returned no data (unpublished or wrong collection slug?).');
+    }
 
     return [
         'hero_title'       => $attr['hero_title']       ?? '',

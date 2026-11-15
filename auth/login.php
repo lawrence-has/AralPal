@@ -10,7 +10,9 @@ require_once __DIR__ . '/../includes/auth.php';
 
 if (is_logged_in()) {
     $role = current_user()['role_name'];
-    if ($role === 'Admin')       header('Location: /AralPal/admin/content.php');
+    // Already authenticated — redirect to their dashboard.
+    // To log in with a different account, use the logout link first.
+    if ($role === 'Admin')       header('Location: /AralPal/admin/users.php');
     elseif ($role === 'Tutor')   header('Location: /AralPal/dashboard/tutor.php');
     else                         header('Location: /AralPal/dashboard/student.php');
     exit;
@@ -48,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'avatar'    => $user['avatar'] ?? null,
             'status'    => $user['status'],
         ]);
-        if ($user['role_name'] === 'Admin')      header('Location: /AralPal/admin/content.php');
+        if ($user['role_name'] === 'Admin')      header('Location: /AralPal/admin/users.php');
         elseif ($user['role_name'] === 'Tutor')  header('Location: /AralPal/dashboard/tutor.php');
         else                                     header('Location: /AralPal/dashboard/student.php');
         exit;
@@ -179,6 +181,10 @@ $reset      = isset($_GET['reset'])      && $_GET['reset']      === '1';
 
             <div class="auth-form-card__footer">
                 <p>Don't have an account? <a href="/AralPal/auth/register.php">Create one free</a></p>
+                <p style="margin-top:.5rem;font-size:.82rem;color:var(--clr-muted)">
+                    Already logged in and want to switch accounts?
+                    <a href="/AralPal/auth/logout.php">Log out first →</a>
+                </p>
             </div>
 
         </div>

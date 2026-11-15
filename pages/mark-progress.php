@@ -28,8 +28,9 @@ $body = json_decode(file_get_contents('php://input'), true);
 $slug   = trim((string) ($body['lesson_slug'] ?? ''));
 $status = trim((string) ($body['status'] ?? ''));
 
-// Validate inputs
-$allowedSlugs    = ['php', 'html-css', 'javascript'];
+// Validate inputs — slugs loaded from DB so new lessons are accepted automatically
+$validSlugStmt = get_db()->query("SELECT slug FROM lessons WHERE is_active = 1");
+$allowedSlugs  = $validSlugStmt ? array_column($validSlugStmt->fetchAll(), 'slug') : ['php', 'html-css', 'javascript'];
 $allowedStatuses = ['in_progress', 'completed'];
 
 if (!in_array($slug, $allowedSlugs, true) || !in_array($status, $allowedStatuses, true)) {

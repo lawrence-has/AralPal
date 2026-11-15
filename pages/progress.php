@@ -1,48 +1,43 @@
 <?php
+/**
+ * AralPal – My Learning Progress
+ *
+ * Displays all active lessons from the lessons table with the student's
+ * actual progress (not started / in progress / completed) and quiz stats.
+ */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+
 require_login();
 
-// ── Migration ────────────────────────────────────────────────────────────────
-get_db()->exec("
-CREATE TABLE IF NOT EXISTS `lesson_progress` (
-  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT UNSIGNED NOT NULL,
-  `lesson_slug` VARCHAR(100) NOT NULL,
-  `status` ENUM('in_progress','completed') NOT NULL DEFAULT 'in_progress',
-  `visited_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `completed_at` DATETIME DEFAULT NULL,
-  UNIQUE KEY `ux_user_lesson` (`user_id`, `lesson_slug`),
-  CONSTRAINT `fk_lp_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
+// Only Students should be here; redirect others
+$_p_user = current_user();
+$_p_role = strtolower((string)($_p_user['role_name'] ?? ''));
+if ($_p_role === 'tutor') { header('Location: /AralPal/dashboard/tutor.php'); exit; }
+if ($_p_role === 'admin') { header('Location: /AralPal/admin/users.php'); exit; }
+
+$db      = get_db();
+$userId  = (int)$_p_user['id'];
 
 $pageTitle = "My Learning Progress – AralPal";
-$user      = current_user();
-$userId    = (int) $user['id'];
 
-// ── Lesson definitions ───────────────────────────────────────────────────────
-$lessons = [
-    'php'        => ['title' => 'Introduction to PHP',     'icon_class' => 'fa-brands fa-php',    'duration' => '15 min', 'category' => 'Programming', 'link' => 'lesson-php.php'],
-    'html-css'   => ['title' => 'HTML & CSS Basics',        'icon_class' => 'fa-brands fa-html5',  'duration' => '20 min', 'category' => 'Web Design',  'link' => 'lesson-html-css.php'],
-    'javascript' => ['title' => 'JavaScript Fundamentals', 'icon_class' => 'fa-brands fa-js',     'duration' => '25 min', 'category' => 'Programming', 'link' => 'lesson-javascript.php'],
-];
+// ── Load all active lessons from DB ──────────────────────────────────────
+$lessonStmt = $db->query("SELECT slug, category, title, description, difficulty, duration_min, sort_order FROM lessons WHERE is_active = 1 ORDER BY sort_order ASC");
+$lessons   = $lessonStmt->fetchAll();
 
-// ── Fetch real progress per slug ─────────────────────────────────────────────
+// ── Fetch real progress per slug ──────────────────────────────────────────
 $progressRows = [];
-$stmt = get_db()->prepare(
-    'SELECT lesson_slug, status FROM lesson_progress WHERE user_id = ?'
-);
-$stmt->execute([$userId]);
-foreach ($stmt->fetchAll() as $row) {
+$progStmt = $db->prepare('SELECT lesson_slug, status FROM lesson_progress WHERE user_id = ?');
+$progStmt->execute([$userId]);
+foreach ($progStmt->fetchAll() as $row) {
     $progressRows[$row['lesson_slug']] = $row['status'];
 }
 
-// ── Fetch quiz stats (graceful if table absent) ───────────────────────────────
+// ── Fetch quiz stats (graceful if table absent) ────────────────────────────
 $quizStats = [];
 try {
-    $stmt = get_db()->prepare(
+    $qStmt = $db->prepare(
         'SELECT lesson_slug,
                 MAX(score / total * 100) AS best_pct,
                 COUNT(*) AS attempts
@@ -50,8 +45,8 @@ try {
          WHERE user_id = ?
          GROUP BY lesson_slug'
     );
-    $stmt->execute([$userId]);
-    foreach ($stmt->fetchAll() as $row) {
+    $qStmt->execute([$userId]);
+    foreach ($qStmt->fetchAll() as $row) {
         $quizStats[$row['lesson_slug']] = [
             'best_pct' => round((float) $row['best_pct']),
             'attempts' => (int)  $row['attempts'],
@@ -61,147 +56,186 @@ try {
     // quiz_attempts table not yet created — use empty stats
 }
 
-// ── Compute per-lesson progress values ───────────────────────────────────────
-$activities  = [];
-foreach ($lessons as $slug => $info) {
+// ── Build activities array ─────────────────────────────────────────────────
+$activities = [];
+foreach ($lessons as $l) {
+    $slug     = $l['slug'];
     $dbStatus = $progressRows[$slug] ?? 'not_started';
     $pct      = match ($dbStatus) {
         'completed'   => 100,
         'in_progress' => 50,
         default       => 0,
     };
-    $activities[] = array_merge($info, [
+    $activities[] = [
         'slug'     => $slug,
+        'title'    => $l['title'],
+        'category' => $l['category'],
+        'difficulty' => $l['difficulty'],
+        'duration' => (int)$l['duration_min'] . ' min',
         'status'   => $dbStatus,
         'progress' => $pct,
-    ]);
+        'link'     => '/AralPal/pages/learn/lesson.php?slug=' . urlencode($slug),
+    ];
 }
 
-// ── Summary counts ───────────────────────────────────────────────────────────
-$completed      = count(array_filter($activities, fn($a) => $a['status'] === 'completed'));
-$inProgress     = count(array_filter($activities, fn($a) => $a['status'] === 'in_progress'));
-$notStarted     = count(array_filter($activities, fn($a) => $a['status'] === 'not_started'));
+// ── Summary counts ─────────────────────────────────────────────────────────
+$completed       = count(array_filter($activities, fn($a) => $a['status'] === 'completed'));
+$inProgress      = count(array_filter($activities, fn($a) => $a['status'] === 'in_progress'));
+$notStarted      = count(array_filter($activities, fn($a) => $a['status'] === 'not_started'));
 $overallProgress = count($activities) > 0
     ? round(array_sum(array_column($activities, 'progress')) / count($activities))
     : 0;
+
+$page_title = $pageTitle;
+require_once __DIR__ . '/../includes/app-header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($pageTitle) ?></title>
-    <link rel="icon" type="image/png" href="../assets/aralpal-logo.png">
-    <link rel="stylesheet" href="../assets/Style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <script>(function(){var s=localStorage.getItem('ap-theme'),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',(s?s==='dark':d)?'dark':'light')})();</script>
-</head>
-<body>
 
-<header class="navbar" id="navbar">
-    <a class="logo logo-brand" href="../index.php">
-        <img src="../assets/aralpal-logo.png" alt="" class="brand-logo" width="34" height="34">
-        <span>AralPal</span>
-    </a>
-    <nav>
-        <a href="../index.php">Home</a>
-        <a href="../index.php#lessons">Lessons</a>
-        <a href="quizzes.php">Quizzes</a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
-    </nav>
-</header>
+<style>
+.pr-wrap { max-width: 1000px; }
+.pr-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.pr-header h1 { font-size:1.5rem; font-weight:800; margin:0 0 .25rem; }
+.pr-header p { color: var(--clr-muted); margin:0; font-size:.9rem; }
 
-<main class="container progress-page">
+.pr-summary { display:grid; grid-template-columns: 2fr repeat(4, 1fr); gap:1rem; margin-bottom:1.75rem; }
+@media (max-width:768px) { .pr-summary { grid-template-columns: 1fr 1fr; } }
+.pr-card { background:var(--clr-surface); border:1px solid var(--clr-border); border-radius:var(--radius-md); padding:1rem 1.25rem; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:.3rem; }
+.pr-card--overall { grid-row: span 1; }
+.pr-card__label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--clr-muted); }
+.pr-card__big { font-size:1.6rem; font-weight:800; color:var(--clr-primary); }
+.pr-bar-wrap { height:8px; background:var(--clr-border); border-radius:99px; overflow:hidden; margin-top:.5rem; }
+.pr-bar-fill { height:100%; background:var(--clr-primary); border-radius:99px; transition:width .4s ease; }
+.pr-card__icon { font-size:1.4rem; margin-bottom:.25rem; }
 
-    <div class="progress-page__header">
+.pr-section { margin-bottom:1.75rem; }
+.pr-section h2 { font-size:1.05rem; font-weight:700; margin:0 0 .9rem; display:flex; align-items:center; gap:.5rem; }
+.pr-list { display:flex; flex-direction:column; gap:.65rem; }
+.pr-item { display:flex; align-items:center; gap:1rem; padding:.9rem 1.1rem; background:var(--clr-surface); border:1px solid var(--clr-border); border-radius:var(--radius-md); box-shadow:var(--shadow-sm); }
+.pr-item--completed { border-left:3px solid #16a34a; }
+.pr-item--in-progress { border-left:3px solid #f59e0b; }
+.pr-item__icon { width:40px; height:40px; display:grid; place-items:center; background:var(--clr-bg); border:1px solid var(--clr-border); border-radius:var(--radius-md); flex-shrink:0; }
+.pr-item__body { flex:1; min-width:0; }
+.pr-item__cat { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--clr-muted); }
+.pr-item__title { font-size:.92rem; font-weight:600; margin:.15rem 0; }
+.pr-item__meta { display:flex; gap:1rem; font-size:.78rem; color:var(--clr-muted); }
+.pr-item__pct { font-size:.85rem; font-weight:700; min-width:36px; text-align:right; }
+.pr-item__bar { height:6px; background:var(--clr-border); border-radius:99px; overflow:hidden; margin-top:.4rem; }
+.pr-item__bar-fill { height:100%; border-radius:99px; }
+
+.pr-badge { display:inline-block; padding:.15em .55em; border-radius:99px; font-size:.68rem; font-weight:600; }
+.pr-badge--completed { background:#dcfce7; color:#166534; }
+.pr-badge--in-progress { background:#fef9c3; color:#92400e; }
+.pr-badge--not-started { background:var(--clr-bg); color:var(--clr-muted); border:1px solid var(--clr-border); }
+
+.pr-quiz-banner { display:flex; align-items:center; gap:1rem; padding:1.25rem; background:var(--clr-surface); border:1px solid var(--clr-border); border-radius:var(--radius-md); }
+.pr-quiz-banner__icon { font-size:2rem; color:var(--clr-primary); }
+.pr-actions { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+.btn { display:inline-block; padding:.4rem .9rem; border-radius:var(--radius-md); font-weight:600; font-size:.82rem; text-decoration:none; border:2px solid transparent; cursor:pointer; }
+.btn-sm { padding:.3rem .7rem; font-size:.78rem; }
+.btn-primary { background:var(--clr-primary); color:#fff; }
+.btn-outline { background:transparent; border-color:var(--clr-primary); color:var(--clr-primary); }
+.btn-success { background:#16a34a; color:#fff; }
+</style>
+
+<div class="pr-wrap">
+
+    <div class="pr-header">
         <div>
-            <span class="eyebrow">Learning Dashboard</span>
-            <h1><i class="fas fa-chart-line" style="margin-right:.4rem"></i>My Progress</h1>
+            <span class="pr-badge pr-badge--not-started" style="font-size:.72rem">LEARNING DASHBOARD</span>
+            <h1>My Learning Progress</h1>
             <p>Track your learning journey across all lessons and quizzes.</p>
         </div>
-        <a class="primary-btn" href="quizzes.php"><i class="fas fa-pen-to-square" style="margin-right:.4rem"></i>Take a Quiz</a>
+        <a class="btn btn-primary" href="/AralPal/pages/quizzes.php">Take a Quiz →</a>
     </div>
 
     <!-- ── Overall Summary ── -->
-    <div class="progress-summary-grid">
-        <div class="progress-summary-card progress-summary-card--overall">
-            <div class="progress-summary-card__label">Overall Progress</div>
-            <div class="progress-summary-card__big"><?= $overallProgress ?>%</div>
-            <div class="progress-bar-wrap">
-                <div class="progress-bar" role="progressbar" aria-valuenow="<?= $overallProgress ?>" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-fill progress-fill--animated" style="width:<?= $overallProgress ?>%"></div>
-                </div>
+    <div class="pr-summary">
+        <div class="pr-card pr-card--overall">
+            <span class="pr-card__label">Overall Progress</span>
+            <span class="pr-card__big"><?= $overallProgress ?>%</span>
+            <div class="pr-bar-wrap">
+                <div class="pr-bar-fill" style="width:<?= $overallProgress ?>%"></div>
             </div>
-            <div class="progress-bar-label"><?= $overallProgress ?>% of all lessons</div>
         </div>
-        <div class="progress-summary-card">
-            <div class="progress-summary-card__icon"><i class="fas fa-circle-check"></i></div>
-            <div class="progress-summary-card__value"><?= $completed ?></div>
-            <div class="progress-summary-card__label">Completed</div>
+        <div class="pr-card">
+            <span class="pr-card__icon" style="color:#16a34a"><i class="fa-solid fa-circle-check"></i></span>
+            <span class="pr-card__big" style="font-size:1.3rem"><?= $completed ?></span>
+            <span class="pr-card__label">Completed</span>
         </div>
-        <div class="progress-summary-card">
-            <div class="progress-summary-card__icon"><i class="fas fa-spinner"></i></div>
-            <div class="progress-summary-card__value"><?= $inProgress ?></div>
-            <div class="progress-summary-card__label">In Progress</div>
+        <div class="pr-card">
+            <span class="pr-card__icon" style="color:#f59e0b"><i class="fa-solid fa-spinner"></i></span>
+            <span class="pr-card__big" style="font-size:1.3rem"><?= $inProgress ?></span>
+            <span class="pr-card__label">In Progress</span>
         </div>
-        <div class="progress-summary-card">
-            <div class="progress-summary-card__icon"><i class="fas fa-book-open"></i></div>
-            <div class="progress-summary-card__value"><?= $notStarted ?></div>
-            <div class="progress-summary-card__label">Not Started</div>
+        <div class="pr-card">
+            <span class="pr-card__icon" style="color:var(--clr-muted)"><i class="fa-solid fa-book-open"></i></span>
+            <span class="pr-card__big" style="font-size:1.3rem"><?= $notStarted ?></span>
+            <span class="pr-card__label">Not Started</span>
         </div>
-        <div class="progress-summary-card">
-            <div class="progress-summary-card__icon"><i class="fas fa-layer-group"></i></div>
-            <div class="progress-summary-card__value"><?= count($activities) ?></div>
-            <div class="progress-summary-card__label">Total Lessons</div>
+        <div class="pr-card">
+            <span class="pr-card__icon" style="color:var(--clr-primary)"><i class="fa-solid fa-layer-group"></i></span>
+            <span class="pr-card__big" style="font-size:1.3rem"><?= count($activities) ?></span>
+            <span class="pr-card__label">Total Lessons</span>
         </div>
     </div>
 
-    <!-- ── Lesson Cards ── -->
-    <section class="progress-lessons">
-        <h2>Lesson Breakdown</h2>
-        <div class="progress-lessons-list">
-            <?php foreach ($activities as $activity):
-                $statusClass = match($activity['status']) {
-                    'completed'   => 'status-completed',
-                    'in_progress' => 'status-in-progress',
-                    default       => 'status-not-started',
+    <!-- ── Lesson Breakdown ── -->
+    <section class="pr-section">
+        <h2><i class="fa-solid fa-list-check"></i> Lesson Breakdown</h2>
+        <div class="pr-list">
+            <?php foreach ($activities as $a):
+                $statusClass = match($a['status']) {
+                    'completed'   => 'pr-item--completed',
+                    'in_progress' => 'pr-item--in-progress',
+                    default       => '',
                 };
-                $statusIcon = match($activity['status']) {
-                    'completed'   => '<i class="fas fa-circle-check"></i>',
-                    'in_progress' => '<i class="fas fa-spinner"></i>',
-                    default       => '<i class="fas fa-book-open"></i>',
+                $barColor = match($a['status']) {
+                    'completed'   => '#16a34a',
+                    'in_progress' => '#f59e0b',
+                    default       => '#e2e8f0',
                 };
-                $statusLabel = match($activity['status']) {
+                $badgeClass = match($a['status']) {
+                    'completed'   => 'pr-badge--completed',
+                    'in_progress' => 'pr-badge--in-progress',
+                    default       => 'pr-badge--not-started',
+                };
+                $badgeLabel = match($a['status']) {
                     'completed'   => 'Completed',
                     'in_progress' => 'In Progress',
                     default       => 'Not Started',
                 };
+                $actionLabel = match($a['status']) {
+                    'completed'   => 'Review',
+                    'in_progress' => 'Continue',
+                    default       => 'Start',
+                };
+                $actionClass = match($a['status']) {
+                    'completed'   => 'btn-success',
+                    'in_progress' => 'btn-primary',
+                    default       => 'btn-outline',
+                };
             ?>
-            <article class="progress-lesson-card <?= $statusClass ?>">
-                <div class="progress-lesson-card__icon"><i class="<?= htmlspecialchars($activity['icon_class']) ?>"></i></div>
-                <div class="progress-lesson-card__body">
-                    <div class="progress-lesson-card__top">
-                        <div>
-                            <span class="lesson-category"><?= htmlspecialchars($activity['category']) ?></span>
-                            <h3><?= htmlspecialchars($activity['title']) ?></h3>
-                            <div class="lesson-meta" style="margin-top:6px">
-                                <span><i class="fas fa-clock"></i> <?= htmlspecialchars($activity['duration']) ?></span>
-                                <span><?= $statusIcon ?> <?= $statusLabel ?></span>
-                            </div>
-                        </div>
-                        <div class="progress-lesson-card__pct"><?= $activity['progress'] ?>%</div>
+            <article class="pr-item <?= $statusClass ?>">
+                <div class="pr-item__icon"><i class="fa-solid fa-book-open"></i></div>
+                <div class="pr-item__body">
+                    <span class="pr-item__cat"><?= htmlspecialchars($a['category'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <div class="pr-item__title"><?= htmlspecialchars($a['title'], ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="pr-item__meta">
+                        <span><i class="fa-solid fa-clock"></i> <?= htmlspecialchars($a['duration'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span><i class="fa-solid fa-signal"></i> <?= htmlspecialchars($a['difficulty'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="pr-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
                     </div>
-                    <div class="progress-bar" role="progressbar" aria-valuenow="<?= $activity['progress'] ?>" aria-valuemin="0" aria-valuemax="100" style="margin-top:12px">
-                        <div class="progress-fill progress-fill--animated" style="width:<?= $activity['progress'] ?>%"></div>
+                    <div class="pr-item__bar">
+                        <div class="pr-item__bar-fill" style="width:<?= $a['progress'] ?>%;background:<?= $barColor ?>"></div>
                     </div>
                 </div>
-                <div class="progress-lesson-card__action">
-                    <?php if ($activity['status'] === 'completed'): ?>
-                        <a class="btn btn-sm btn-success" href="<?= htmlspecialchars($activity['link']) ?>">Review</a>
-                    <?php elseif ($activity['status'] === 'in_progress'): ?>
-                        <a class="btn btn-sm btn-primary" href="<?= htmlspecialchars($activity['link']) ?>">Continue</a>
-                    <?php else: ?>
-                        <a class="btn btn-sm btn-outline" href="<?= htmlspecialchars($activity['link']) ?>">Start</a>
+                <span class="pr-item__pct" style="color:<?= $barColor ?>"><?= $a['progress'] ?>%</span>
+                <div class="pr-actions">
+                    <a class="btn btn-sm <?= $actionClass ?>" href="<?= htmlspecialchars($a['link'], ENT_QUOTES, 'UTF-8') ?>"><?= $actionLabel ?></a>
+                    <?php
+                    $qs = $quizStats[$a['slug']] ?? null;
+                    if ($qs):
+                    ?>
+                    <a class="btn btn-sm btn-outline" href="/AralPal/pages/quizzes.php?quiz=<?= urlencode($a['slug']) ?>">Quiz: <?= $qs['best_pct'] ?>%</a>
                     <?php endif; ?>
                 </div>
             </article>
@@ -209,103 +243,73 @@ $overallProgress = count($activities) > 0
         </div>
     </section>
 
-    <!-- ── Quiz Stats ── -->
-    <section class="progress-quizzes">
-        <h2><i class="fas fa-pen-to-square" style="margin-right:.4rem"></i>Quiz Activity</h2>
+    <!-- ── Quiz Activity ── -->
+    <section class="pr-section">
+        <h2><i class="fa-solid fa-pen-to-square"></i> Quiz Activity</h2>
         <?php if (!empty($quizStats)): ?>
-        <div class="progress-lessons-list">
-            <?php foreach ($lessons as $slug => $info):
-                $qs = $quizStats[$slug] ?? null;
-                if (!$qs) continue;
+        <div class="pr-list">
+            <?php foreach ($quizStats as $qslug => $qs):
+                // Find the lesson title
+                $qTitle = 'Unknown';
+                foreach ($activities as $a) {
+                    if ($a['slug'] === $qslug) { $qTitle = $a['title']; break; }
+                }
             ?>
-            <article class="progress-lesson-card">
-                <div class="progress-lesson-card__icon"><i class="<?= htmlspecialchars($info['icon_class']) ?>"></i></div>
-                <div class="progress-lesson-card__body">
-                    <div class="progress-lesson-card__top">
-                        <div>
-                            <span class="lesson-category"><?= htmlspecialchars($info['category']) ?></span>
-                            <h3><?= htmlspecialchars($info['title']) ?></h3>
-                            <div class="lesson-meta" style="margin-top:6px">
-                                <span><i class="fas fa-star"></i> Best score: <?= $qs['best_pct'] ?>%</span>
-                                <span><i class="fas fa-repeat"></i> Attempts: <?= $qs['attempts'] ?></span>
-                            </div>
-                        </div>
-                        <div class="progress-lesson-card__pct"><?= $qs['best_pct'] ?>%</div>
+            <article class="pr-item">
+                <div class="pr-item__icon"><i class="fa-solid fa-star"></i></div>
+                <div class="pr-item__body">
+                    <span class="pr-item__cat">Quiz</span>
+                    <div class="pr-item__title"><?= htmlspecialchars($qTitle, ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="pr-item__meta">
+                        <span>Best score: <?= $qs['best_pct'] ?>%</span>
+                        <span>Attempts: <?= $qs['attempts'] ?></span>
                     </div>
-                    <div class="progress-bar" role="progressbar" aria-valuenow="<?= $qs['best_pct'] ?>" aria-valuemin="0" aria-valuemax="100" style="margin-top:12px">
-                        <div class="progress-fill progress-fill--animated" style="width:<?= $qs['best_pct'] ?>%"></div>
+                    <div class="pr-item__bar">
+                        <div class="pr-item__bar-fill" style="width:<?= $qs['best_pct'] ?>%;background:var(--clr-primary)"></div>
                     </div>
                 </div>
-                <div class="progress-lesson-card__action">
-                    <a class="btn btn-sm btn-outline" href="quizzes.php">Retry</a>
+                <span class="pr-item__pct" style="color:var(--clr-primary)"><?= $qs['best_pct'] ?>%</span>
+                <div class="pr-actions">
+                    <a class="btn btn-sm btn-outline" href="/AralPal/pages/quizzes.php?quiz=<?= urlencode($qslug) ?>">Retry</a>
                 </div>
             </article>
             <?php endforeach; ?>
         </div>
         <?php else: ?>
-        <div class="progress-quiz-banner">
-            <div class="progress-quiz-banner__text">
-                <span class="feature-icon"><i class="fas fa-pen-to-square"></i></span>
-                <div>
-                    <h3>Test your knowledge</h3>
-                    <p>Take quizzes to reinforce what you've learned and track your understanding over time.</p>
-                </div>
+        <div class="pr-quiz-banner">
+            <span class="pr-quiz-banner__icon"><i class="fa-solid fa-pen-to-square"></i></span>
+            <div style="flex:1">
+                <strong>Test your knowledge</strong>
+                <p style="margin:.25rem 0 0;color:var(--clr-muted);font-size:.88rem">Take quizzes to reinforce what you've learned and track your understanding over time.</p>
             </div>
-            <a class="primary-btn" href="quizzes.php">Go to Quizzes →</a>
+            <a class="btn btn-primary" href="/AralPal/pages/quizzes.php">Go to Quizzes →</a>
         </div>
         <?php endif; ?>
     </section>
 
     <!-- ── Achievements ── -->
-    <section class="progress-achievements">
-        <h2><i class="fas fa-trophy" style="margin-right:.4rem"></i>Achievements</h2>
-        <div class="achievements-grid">
-            <div class="achievement-card <?= $completed >= 1 ? 'achievement-card--earned' : '' ?>">
-                <div class="achievement-card__icon"><i class="fas fa-medal"></i></div>
-                <div class="achievement-card__name">First Lesson</div>
-                <div class="achievement-card__desc">Complete your first lesson</div>
-                <?php if ($completed >= 1): ?><div class="achievement-card__earned">Earned!</div><?php endif; ?>
+    <section class="pr-section">
+        <h2><i class="fa-solid fa-trophy"></i> Achievements</h2>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:.75rem">
+            <?php
+            $achievements = [
+                ['icon'=>'fa-medal','name'=>'First Lesson','desc'=>'Complete your first lesson','earned'=>$completed>=1],
+                ['icon'=>'fa-book','name'=>'Bookworm','desc'=>'Complete 3 lessons','earned'=>$completed>=3],
+                ['icon'=>'fa-bolt','name'=>'Halfway There','desc'=>'Reach 50% overall progress','earned'=>$overallProgress>=50],
+                ['icon'=>'fa-trophy','name'=>'Graduate','desc'=>'Complete all available lessons','earned'=>$overallProgress>=100],
+            ];
+            foreach ($achievements as $ach):
+            ?>
+            <div style="background:var(--clr-surface); border:1px solid var(--clr-border); border-radius:var(--radius-md); padding:1rem; text-align:center; <?= $ach['earned'] ? 'border-color:var(--clr-primary);box-shadow:var(--shadow-sm)' : 'opacity:.6' ?>">
+                <i class="fa-solid <?= $ach['icon'] ?>" style="font-size:1.8rem;color:<?= $ach['earned'] ? 'var(--clr-primary)' : 'var(--clr-muted)' ?>"></i>
+                <div style="font-weight:600;font-size:.85rem;margin-top:.4rem"><?= $ach['name'] ?></div>
+                <div style="font-size:.75rem;color:var(--clr-muted)"><?= $ach['desc'] ?></div>
+                <?php if ($ach['earned']): ?><div style="font-size:.72rem;color:#16a34a;font-weight:600;margin-top:.3rem">Earned!</div><?php endif; ?>
             </div>
-            <div class="achievement-card <?= $completed >= 3 ? 'achievement-card--earned' : '' ?>">
-                <div class="achievement-card__icon"><i class="fas fa-book"></i></div>
-                <div class="achievement-card__name">Bookworm</div>
-                <div class="achievement-card__desc">Complete 3 lessons</div>
-                <?php if ($completed >= 3): ?><div class="achievement-card__earned">Earned!</div><?php endif; ?>
-            </div>
-            <div class="achievement-card <?= $overallProgress >= 50 ? 'achievement-card--earned' : '' ?>">
-                <div class="achievement-card__icon"><i class="fas fa-bolt"></i></div>
-                <div class="achievement-card__name">Halfway There</div>
-                <div class="achievement-card__desc">Reach 50% overall progress</div>
-                <?php if ($overallProgress >= 50): ?><div class="achievement-card__earned">Earned!</div><?php endif; ?>
-            </div>
-            <div class="achievement-card <?= $overallProgress >= 100 ? 'achievement-card--earned' : '' ?>">
-                <div class="achievement-card__icon"><i class="fas fa-trophy"></i></div>
-                <div class="achievement-card__name">Graduate</div>
-                <div class="achievement-card__desc">Complete all available lessons</div>
-                <?php if ($overallProgress >= 100): ?><div class="achievement-card__earned">Earned!</div><?php endif; ?>
-            </div>
+            <?php endforeach; ?>
         </div>
     </section>
 
-</main>
+</div>
 
-<footer class="site-footer">
-    <p>&copy; <?= date('Y') ?> AralPal. All rights reserved.</p>
-</footer>
-
-<script>
-const tt = document.getElementById('themeToggle');
-function applyTheme(dark) {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    if (tt) {
-        tt.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-    }
-    localStorage.setItem('ap-theme', dark ? 'dark' : 'light');
-}
-applyTheme(document.documentElement.getAttribute('data-theme') === 'dark');
-if (tt) tt.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'));
-const nb = document.getElementById('navbar');
-if (nb) window.addEventListener('scroll', () => nb.classList.toggle('scrolled', window.scrollY > 10), { passive: true });
-</script>
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/app-footer.php'; ?>

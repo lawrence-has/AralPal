@@ -21,14 +21,23 @@ if (empty($strapiHomepage['hero_title']) && is_file(__DIR__ . '/admin/cms-config
         foreach ($cmsRows as $cmsRow) {
             $cmsContent[$cmsRow['section_key']] = $cmsRow;
         }
+    } catch (Throwable $e) {}
+}
+
+// Announcements: use Strapi if available, otherwise fall back to MySQL CMS independently.
+if (!empty($strapiAnnouncements)) {
+    $cmsAnnouncements = $strapiAnnouncements;
+} elseif (is_file(__DIR__ . '/admin/cms-config.php')) {
+    try {
+        if (!function_exists('db')) {
+            require_once __DIR__ . '/admin/cms-config.php';
+        }
         $cmsAnnouncements = db()->query(
             'SELECT title, body, published_at FROM cms_announcements
              WHERE is_published = 1
              ORDER BY published_at DESC, created_at DESC LIMIT 5'
         )->fetchAll();
     } catch (Throwable $e) {}
-} elseif (!empty($strapiAnnouncements)) {
-    $cmsAnnouncements = $strapiAnnouncements;
 }
 
 $homeHeroTitle       = $strapiHomepage['hero_title']       ?: ($cmsContent['home_hero_title']['title']      ?? 'Learn something new,');

@@ -148,6 +148,7 @@ try {
           `status` ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending',
           `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           `paid_at` DATETIME DEFAULT NULL,
+          UNIQUE KEY `ux_reference_no` (`reference_no`),
           CONSTRAINT `fk_pay_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 

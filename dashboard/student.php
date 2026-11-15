@@ -52,11 +52,10 @@ $stats->execute([$user_id]);
 $booking_stats = $stats->fetch();
 
 // ── Lesson progress ───────────────────────────────────────────────────────
-$lesson_slugs = [
-    'php'        => ['title' => 'Introduction to PHP',       'icon' => 'fa-code'],
-    'html-css'   => ['title' => 'HTML & CSS Basics',         'icon' => 'fa-brands fa-html5'],
-    'javascript' => ['title' => 'JavaScript Fundamentals',   'icon' => 'fa-brands fa-js'],
-];
+// Load all active lessons from DB (replaces hardcoded 3-lesson array)
+$all_lessons_stmt = $db->query("SELECT slug, category, title, duration_min FROM lessons WHERE is_active = 1 ORDER BY sort_order ASC");
+$all_lessons_db   = $all_lessons_stmt->fetchAll();
+
 $lesson_progress_map = [];
 try {
     $lp_stmt = $db->prepare('SELECT lesson_slug, status FROM lesson_progress WHERE user_id = ?');
@@ -66,9 +65,28 @@ try {
     }
 } catch (Exception $e) {}
 
-$completed_lessons = count(array_filter($lesson_progress_map, fn($s) => $s === 'completed'));
-$total_lessons     = count($lesson_slugs);
-$overall_pct       = $total_lessons > 0 ? round(($completed_lessons / $total_lessons) * 100) : 0;
+$completed_lessons = 0;
+$inprogress_lessons = 0;
+foreach ($all_lessons_db as $l) {
+    $st = $lesson_progress_map[$l['slug']] ?? 'not_started';
+    if ($st === 'completed')   $completed_lessons++;
+    if ($st === 'in_progress') $inprogress_lessons++;
+}
+$total_lessons = count($all_lessons_db);
+$overall_pct   = $total_lessons > 0
+    ? round((($completed_lessons * 100 + $inprogress_lessons * 50) / ($total_lessons * 100)) * 100)
+    : 0;
+
+// Continue learning: in_progress lessons (max 4)
+$continue_lessons = array_values(array_filter($all_lessons_db,
+    fn($l) => ($lesson_progress_map[$l['slug']] ?? '') === 'in_progress'
+));
+$continue_lessons = array_slice($continue_lessons, 0, 4);
+
+// Recommended: not started, max 4
+$recommended_lessons = array_slice(array_values(array_filter($all_lessons_db,
+    fn($l) => !isset($lesson_progress_map[$l['slug']])
+)), 0, 4);
 
 // ── Quiz attempts ─────────────────────────────────────────────────────────
 $quiz_attempts = [];
@@ -265,20 +283,29 @@ require_once __DIR__ . '/../includes/app-header.php';
                 </div>
             </div>
 
-            <!-- Per-lesson progress bars -->
+            <!-- Per-lesson progress bars — from DB, all active lessons -->
             <ul class="sd-lesson-list">
-                <?php foreach ($lesson_slugs as $slug => $meta):
+                <?php
+                // Show up to 5 items: in-progress first, then not-started
+                $display_lessons = array_merge(
+                    array_filter($all_lessons_db, fn($l) => ($lesson_progress_map[$l['slug']] ?? '') === 'in_progress'),
+                    array_filter($all_lessons_db, fn($l) => ($lesson_progress_map[$l['slug']] ?? '') === 'completed'),
+                    array_filter($all_lessons_db, fn($l) => !isset($lesson_progress_map[$l['slug']]))
+                );
+                $display_lessons = array_slice(array_values($display_lessons), 0, 5);
+                foreach ($display_lessons as $dl):
+                    $slug   = $dl['slug'];
                     $status = $lesson_progress_map[$slug] ?? 'not_started';
                     $pct    = $status === 'completed' ? 100 : ($status === 'in_progress' ? 50 : 0);
                     $bar_color = $status === 'completed' ? '#16a34a' : ($status === 'in_progress' ? '#f59e0b' : '#e2e8f0');
-                    $link   = '/AralPal/pages/lesson-' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . '.php';
+                    $link   = '/AralPal/pages/learn/lesson.php?slug=' . urlencode($slug);
                 ?>
                     <li class="sd-lp-item">
-                        <a href="<?= $link ?>" class="sd-lp-item__icon" aria-label="<?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?>">
-                            <i class="fa <?= htmlspecialchars($meta['icon'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
+                        <a href="<?= htmlspecialchars($link, ENT_QUOTES, 'UTF-8') ?>" class="sd-lp-item__icon" aria-label="<?= htmlspecialchars($dl['title'], ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="fa fa-book-open" aria-hidden="true"></i>
                         </a>
                         <div class="sd-lp-item__info">
-                            <span class="sd-lp-item__title"><?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="sd-lp-item__title"><?= htmlspecialchars($dl['title'], ENT_QUOTES, 'UTF-8') ?></span>
                             <div class="sd-lp-track" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100">
                                 <div class="sd-lp-fill" style="width:<?= $pct ?>%;background:<?= $bar_color ?>"></div>
                             </div>
@@ -287,6 +314,9 @@ require_once __DIR__ . '/../includes/app-header.php';
                     </li>
                 <?php endforeach; ?>
             </ul>
+            <div style="margin-top:.75rem;text-align:right">
+                <a href="/AralPal/pages/learn/index.php" style="font-size:.82rem;color:var(--clr-primary)">View all <?= $total_lessons ?> lessons →</a>
+            </div>
         </section>
 
         <!-- Quiz Scores -->
@@ -396,6 +426,60 @@ require_once __DIR__ . '/../includes/app-header.php';
         </section>
 
     </div><!-- /.sd-grid -->
+
+    <!-- ── Learning Center Section ────────────────────────────────────── -->
+    <?php if (!empty($continue_lessons) || !empty($recommended_lessons)): ?>
+    <section class="sd-learn-section">
+        <div class="sd-learn-section__head">
+            <h2><i class="fa-solid fa-book-open" aria-hidden="true"></i> Learning Center</h2>
+            <a href="/AralPal/pages/learn/index.php" class="sd-widget__more">Browse all lessons →</a>
+        </div>
+
+        <?php if (!empty($continue_lessons)): ?>
+        <div class="sd-learn-group">
+            <p class="sd-learn-group__label">▶ Continue Learning</p>
+            <div class="sd-learn-grid">
+                <?php foreach ($continue_lessons as $cl): ?>
+                <a class="sd-learn-card" href="/AralPal/pages/learn/lesson.php?slug=<?= urlencode($cl['slug']) ?>">
+                    <span class="sd-learn-card__cat"><?= htmlspecialchars($cl['category'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="sd-learn-card__title"><?= htmlspecialchars($cl['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="sd-learn-card__meta">⏱ <?= (int)$cl['duration_min'] ?> min &nbsp;·&nbsp; <span style="color:#1e40af">▶ In Progress</span></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($recommended_lessons)): ?>
+        <div class="sd-learn-group">
+            <p class="sd-learn-group__label">⭐ Recommended — Start Here</p>
+            <div class="sd-learn-grid">
+                <?php foreach ($recommended_lessons as $rl): ?>
+                <a class="sd-learn-card" href="/AralPal/pages/learn/lesson.php?slug=<?= urlencode($rl['slug']) ?>">
+                    <span class="sd-learn-card__cat"><?= htmlspecialchars($rl['category'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="sd-learn-card__title"><?= htmlspecialchars($rl['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="sd-learn-card__meta">⏱ <?= (int)$rl['duration_min'] ?> min &nbsp;·&nbsp; <span style="color:var(--clr-muted)">Not started</span></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <style>
+    .sd-learn-section { margin-bottom: 2rem; background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; box-shadow: var(--shadow-sm); }
+    .sd-learn-section__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .sd-learn-section__head h2 { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; margin: 0; }
+    .sd-learn-group { margin-bottom: 1rem; }
+    .sd-learn-group__label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--clr-muted); margin: 0 0 .6rem; }
+    .sd-learn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; }
+    .sd-learn-card { background: var(--clr-bg); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: .85rem 1rem; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: .3rem; transition: box-shadow var(--transition), transform var(--transition); }
+    .sd-learn-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+    .sd-learn-card__cat { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--clr-muted); }
+    .sd-learn-card__title { font-size: .9rem; font-weight: 600; line-height: 1.4; }
+    .sd-learn-card__meta { font-size: .75rem; color: var(--clr-muted); }
+    </style>
+    <?php endif; ?>
 
     <!-- ── Quick Actions ──────────────────────────────────────────────── -->
     <nav class="sd-actions" aria-label="Quick actions">

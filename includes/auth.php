@@ -60,6 +60,10 @@ function require_role(string $role): void
  */
 function login_user(array $user): void
 {
+    // Rotate the session ID first to prevent session fixation attacks.
+    // The 'true' parameter deletes the old session file immediately.
+    session_regenerate_id(true);
+
     $_SESSION['user'] = [
         'id'        => $user['id'],
         'full_name' => $user['full_name'],
@@ -68,22 +72,43 @@ function login_user(array $user): void
         'avatar'    => $user['avatar'],
         'status'    => $user['status'],
     ];
-    session_regenerate_id(true);
 }
 
 /**
  * Destroys the session and redirects to the home page.
+ *
+ * Order matters:
+ * 1. Capture the session name and cookie params BEFORE destroying the session.
+ * 2. Clear the $_SESSION superglobal.
+ * 3. Send a Set-Cookie header to expire the browser's session cookie, using
+ *    the exact same attributes (path, secure, httponly, samesite) it was set
+ *    with. Mismatched attributes mean the browser ignores the deletion.
+ * 4. Destroy the server-side session storage.
  */
 function logout_user(): void
 {
+    // 1. Capture cookie identity before destroying anything
+    $cookie_name   = session_name();
+    $cookie_params = session_get_cookie_params();
+
+    // 2. Wipe the in-memory session data
     $_SESSION = [];
+
+    // 3. Expire the browser cookie — attributes must match the original Set-Cookie
+    if (ini_get('session.use_cookies')) {
+        setcookie($cookie_name, '', [
+            'expires'  => time() - 3600,
+            'path'     => $cookie_params['path'],
+            'domain'   => $cookie_params['domain'],
+            'secure'   => $cookie_params['secure'],
+            'httponly' => $cookie_params['httponly'],
+            'samesite' => $cookie_params['samesite'] ?? 'Lax',
+        ]);
+    }
+
+    // 4. Destroy the server-side session storage
     session_destroy();
-    setcookie(session_name(), '', [
-        'expires'  => time() - 3600,
-        'path'     => '/AralPal',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+
     header('Location: /AralPal/index.php');
     exit;
 }

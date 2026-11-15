@@ -83,7 +83,7 @@ $db = get_db();
 // Subjects for filter dropdown
 $subjects_list = $db->query('SELECT id, subject_name FROM subjects ORDER BY subject_name')->fetchAll();
 
-// Base query
+// Base query — uses LEFT JOINs so tutors appear even without subjects set
 $sql = '
     SELECT
         u.id          AS user_id,
@@ -95,10 +95,10 @@ $sql = '
         t.is_featured,
         GROUP_CONCAT(DISTINCT s.subject_name ORDER BY s.subject_name SEPARATOR \',\') AS subjects
     FROM users u
-    JOIN tutors t        ON u.id = t.user_id
-    JOIN tutor_subjects ts ON t.id = ts.tutor_id
-    JOIN subjects s      ON ts.subject_id = s.id
-    LEFT JOIN availability av ON t.id = av.tutor_id
+    JOIN tutors t             ON u.id = t.user_id
+    LEFT JOIN tutor_subjects ts ON t.id = ts.tutor_id
+    LEFT JOIN subjects s        ON ts.subject_id = s.id
+    LEFT JOIN availability av   ON t.id = av.tutor_id
     WHERE 1=1
 ';
 

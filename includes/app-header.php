@@ -391,10 +391,10 @@ function _ap_active(string $href, string $uri): string
                     </a>
                 </li>
                 <li>
-                    <a href="/AralPal/pages/progress.php"
-                       class="<?= _ap_active('/pages/progress.php', $_ap_current_uri) ?>">
+                    <a href="/AralPal/pages/learn/index.php"
+                       class="<?= _ap_active('/pages/learn/', $_ap_current_uri) ?>">
                         <span class="nav-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span>
-                        Lessons
+                        Learning Center
                     </a>
                 </li>
                 <li>
@@ -458,10 +458,10 @@ function _ap_active(string $href, string $uri): string
                     </a>
                 </li>
                 <li>
-                    <a href="/AralPal/tutors/index.php"
-                       class="<?= _ap_active('/tutors/index.php', $_ap_current_uri) ?>">
+                    <a href="/AralPal/tutors/availability.php"
+                       class="<?= _ap_active('/tutors/availability.php', $_ap_current_uri) ?>">
                         <span class="nav-icon"><i class="fa-solid fa-clock" aria-hidden="true"></i></span>
-                        Availability
+                        Manage Availability
                     </a>
                 </li>
 
